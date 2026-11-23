@@ -24,8 +24,8 @@ android {
         applicationId = "it.justapps.justchords"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "1.1.1"
     }
 
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/webassets"))
