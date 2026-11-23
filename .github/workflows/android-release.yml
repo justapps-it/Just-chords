@@ -1,0 +1,44 @@
+name: Android release
+
+# Publishes android/release/JustChords.apk (built and signed locally, see
+# README) as a GitHub release whenever it changes. The tag is
+# android-v<versionName> from android/app/build.gradle.kts.
+on:
+  push:
+    paths:
+      - android/release/JustChords.apk
+      - .github/workflows/android-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version and checksum
+        id: v
+        run: |
+          version=$(grep -oP 'versionName\s*=\s*"\K[^"]+' android/app/build.gradle.kts)
+          echo "tag=android-v$version" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          sha256sum android/release/JustChords.apk | tee android/release/JustChords.apk.sha256
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Just-Chords for Android ${{ steps.v.outputs.version }}
+          make_latest: true
+          files: |
+            android/release/JustChords.apk
+            android/release/JustChords.apk.sha256
+          body: |
+            **Just-Chords for Android** — chords, transposition, capo, diagrams, stage mode, tuner, metronome and chord recognition. Works offline.
+
+            1. Download **JustChords.apk** below on your phone.
+            2. Open it and allow installing from this source (Android 10 or newer).
+            3. To import a song, share the page (or the copied text) from your browser to Just-Chords.
+
+            🇮🇹 Scarica **JustChords.apk** sul telefono, aprilo e consenti l'installazione da questa fonte. Per importare una canzone, condividi la pagina o il testo copiato dal browser verso Just-Chords.

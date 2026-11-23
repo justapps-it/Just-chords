@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Just-Chords</string>
+    <string name="mic_denied">Allow the microphone to use the tuner and chord recognition.</string>
+</resources>
