@@ -8,3 +8,4 @@ android/local.properties
 android/.kotlin
 *.jks
 android/.idea
+src/worker/assets.gen.ts

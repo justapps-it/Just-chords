@@ -24,4 +24,12 @@ class WebTest {
         assertTrue(u.endsWith("&url=https%3A%2F%2Ftabs.example%2Fx%3Fa%3D1"))
         assertEquals("https://appassets.androidplatform.net/share", Web.shareUrl(null, null))
     }
+
+    @Test fun onlyChordSitesAreFetched() {
+        assertTrue(Web.fetchAllowed("https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-1"))
+        assertTrue(Web.fetchAllowed("https://www.accordiespartiti.it/?s=albachiara"))
+        assertEquals(false, Web.fetchAllowed("http://www.accordiespartiti.it/"))
+        assertEquals(false, Web.fetchAllowed("https://www.accordiespartiti.it.evil.com/"))
+        assertEquals(false, Web.fetchAllowed("https://evil.com/?u=https://tabs.ultimate-guitar.com"))
+    }
 }

@@ -20,6 +20,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.lifecycle.lifecycleScope
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Just-Chords for Android: the web app bundled in the APK (works offline from
@@ -52,6 +64,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         web = WebView(this)
         setContentView(web)
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
         web.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -125,11 +138,82 @@ class MainActivity : ComponentActivity() {
         if (i?.action == Intent.ACTION_SEND) Web.shareUrl(i.getStringExtra(Intent.EXTRA_SUBJECT), i.getStringExtra(Intent.EXTRA_TEXT))
         else "${Web.ORIGIN}/"
 
+    /** Answers a JS call through window.__jcNative(id, ok, status, url, body). */
+    private fun reply(id: String, ok: Boolean, status: Int, url: String, body: String) = runOnUiThread {
+        val js = "window.__jcNative&&window.__jcNative(${JSONObject.quote(id)},$ok,$status,${JSONObject.quote(url)},${JSONObject.quote(body)})"
+        web.evaluateJavascript(js, null)
+    }
+
+    /** Downloads a chords page from the phone itself, like the browser would. */
+    private suspend fun download(start: String): Triple<Int, String, String> = withContext(Dispatchers.IO) {
+        var url = start
+        repeat(5) {
+            if (!Web.fetchAllowed(url)) return@withContext Triple(0, url, "blocked host")
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.instanceFollowRedirects = false
+            c.connectTimeout = 10000
+            c.readTimeout = 15000
+            c.setRequestProperty("Accept", "text/html,application/json")
+            c.setRequestProperty("Accept-Language", "it,en;q=0.8")
+            c.setRequestProperty("User-Agent", web.settings.userAgentString)
+            try {
+                val code = c.responseCode
+                if (code in 300..399) {
+                    url = URL(URL(url), c.getHeaderField("Location") ?: return@withContext Triple(code, url, "")).toString()
+                    return@repeat
+                }
+                val stream = if (code < 400) c.inputStream else c.errorStream
+                // Pages are a few hundred KB; stop at 4 MB (readNBytes needs API 33).
+                val text = stream?.use { s ->
+                    val out = java.io.ByteArrayOutputStream()
+                    val buf = ByteArray(16 * 1024)
+                    while (out.size() < 4 * 1024 * 1024) {
+                        val n = s.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                    }
+                    out.toString("UTF-8")
+                } ?: ""
+                return@withContext Triple(code, url, text)
+            } finally {
+                c.disconnect()
+            }
+        }
+        Triple(0, url, "too many redirects")
+    }
+
+    private fun googleSignIn(id: String) = lifecycleScope.launch {
+        try {
+            val option = GetSignInWithGoogleOption.Builder(getString(R.string.google_web_client_id)).build()
+            val res = CredentialManager.create(this@MainActivity).getCredential(this@MainActivity, GetCredentialRequest(listOf(option)))
+            val token = GoogleIdTokenCredential.createFrom(res.credential.data).idToken
+            reply(id, true, 200, "", token)
+        } catch (e: GetCredentialCancellationException) {
+            reply(id, false, 0, "", "")
+        } catch (e: Exception) {
+            reply(id, false, 0, "", e.message ?: e.javaClass.simpleName)
+        }
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun keepScreenOn(on: Boolean) = runOnUiThread {
             if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+
+        @JavascriptInterface
+        fun fetchText(id: String, url: String) {
+            if (!Web.fetchAllowed(url)) return reply(id, false, 0, url, "blocked host")
+            lifecycleScope.launch {
+                val (code, finalUrl, body) = runCatching { download(url) }.getOrElse { Triple(0, url, it.message ?: "error") }
+                reply(id, code in 200..299, code, finalUrl, body)
+            }
+        }
+
+        @JavascriptInterface
+        fun googleSignIn(id: String) {
+            runOnUiThread { googleSignIn(id) }
         }
     }
 }

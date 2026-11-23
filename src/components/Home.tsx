@@ -3,11 +3,11 @@ import { useT } from '../i18n';
 import { go } from '../router';
 import { saveSetlists, uid, useLibrary } from '../store';
 import { useAndroidRelease } from '../app-release';
+import { songDifficulty } from '../lib/difficulty';
+import { LevelBadge } from './LevelBadge';
+import { Recs } from './Recs';
 
-const SITES = [
-  { name: 'Ultimate Guitar', url: (q: string) => `https://www.ultimate-guitar.com/search.php?search_type=title&value=${encodeURIComponent(q)}` },
-  { name: 'Accordi e Spartiti', url: (q: string) => `https://www.accordiespartiti.it/?s=${encodeURIComponent(q)}` },
-];
+const isLink = (s: string) => /^https?:\/\/\S+$/.test(s.trim());
 
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -29,6 +29,13 @@ export function Home() {
       : list.sort((a, b) => (b.opened ?? b.updated) - (a.opened ?? a.updated));
   }, [lib.songs, q, filter]);
 
+  const levels = useMemo(() => new Map(lib.songs.map((s) => [s.id, songDifficulty(s.chordpro).level])), [lib.songs]);
+  const find = () => {
+    const v = q.trim();
+    if (!v) return;
+    go(isLink(v) ? `/find?url=${encodeURIComponent(v)}` : `/find?q=${encodeURIComponent(v)}`);
+  };
+
   const newSetlist = () => {
     const name = prompt(t('setlistName'));
     if (!name?.trim()) return;
@@ -47,25 +54,22 @@ export function Home() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (q.trim() && !songs.length) window.open(SITES[0].url(q), '_blank', 'noopener');
+            find();
           }}
         >
-          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search')} aria-label={t('search')} autoComplete="off" />
+          <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('searchOrLink')} aria-label={t('search')} autoComplete="off" />
         </form>
         {q.trim() && (
           <div className="search-out">
             <div className="search-sites">
-              <span className="muted">{t('searchOn')}</span>
-              {SITES.map((s) => (
-                <a key={s.name} className="chip" href={s.url(q)} target="_blank" rel="noopener noreferrer">
-                  {s.name} ↗
-                </a>
-              ))}
-              <button className="chip primary" onClick={() => go(`/import?title=${encodeURIComponent(q)}`)}>
+              <button className="btn primary" onClick={find}>
+                {isLink(q) ? t('openLink') : t('findChords')} →
+              </button>
+              <button className="chip" onClick={() => go(`/import?title=${encodeURIComponent(q)}`)}>
                 {t('paste')}
               </button>
             </div>
-            <p className="muted small">{t('importHint')}</p>
+            <p className="muted small">{isLink(q) ? t('linkHint') : t('findHint')}</p>
           </div>
         )}
       </section>
@@ -87,6 +91,8 @@ export function Home() {
           </button>
         ))}
       </section>
+
+      {!q.trim() && <Recs />}
 
       <section className="lib">
         <div className="lib-head">
@@ -120,7 +126,9 @@ export function Home() {
                   {s.favorite && <span className="star">★ </span>}
                   {s.title}
                 </span>
-                <span className="song-sub">{s.artist}</span>
+                <span className="song-sub">
+                  {s.artist} {levels.get(s.id) && <LevelBadge level={levels.get(s.id)!} />}
+                </span>
               </a>
             </li>
           ))}

@@ -40,6 +40,14 @@ object Web {
 
     fun isInternal(url: String): Boolean = url.startsWith(ORIGIN)
 
+    /** The only pages the app downloads itself (chords sites), over HTTPS. */
+    private val FETCH_HOSTS = setOf("www.ultimate-guitar.com", "tabs.ultimate-guitar.com", "ultimate-guitar.com", "www.accordiespartiti.it", "accordiespartiti.it")
+
+    fun fetchAllowed(url: String): Boolean {
+        val m = Regex("^https://([^/?#:]+)(?:[/?#]|$)").find(url) ?: return false
+        return m.groupValues[1].lowercase() in FETCH_HOSTS
+    }
+
     @Suppress("unused")
     fun parse(u: String): Uri = Uri.parse(u)
 }

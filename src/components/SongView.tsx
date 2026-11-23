@@ -7,6 +7,10 @@ import { setSettings, useSettings } from '../settings';
 import { deleteSong, patchSong, saveSetlists, useLibrary, type Song } from '../store';
 import { ChordCard } from './Diagram';
 import { go } from '../router';
+import { signal } from '../account';
+import { changesPerLine, chordsDifficulty } from '../lib/difficulty';
+import { LevelBadge } from './LevelBadge';
+import { Player } from './Player';
 
 interface Props {
   song: Song;
@@ -28,6 +32,7 @@ export function SongView({ song, stage = false, setlist }: Props) {
   const [zoom, setZoom] = useState<string | null>(null);
   const [scrolling, setScrolling] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [listen, setListen] = useState(false);
 
   const originalKey = useMemo(() => (parsed.key ? parseKey(parsed.key) : null) ?? detectKey(chords), [parsed.key, chords]);
   // Sounding key (for the label) and the key the shapes are written in (for sharps/flats).
@@ -53,7 +58,18 @@ export function SongView({ song, stage = false, setlist }: Props) {
 
   useEffect(() => {
     patchSong(song.id, { opened: Date.now() });
-  }, [song.id]);
+    signal('open', { title: song.title, artist: song.artist });
+  }, [song.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Difficulty of what is shown (follows transpose/capo/simplify).
+  const difficulty = useMemo(() => {
+    const shown = chords.map((c) => (simplify ? simplifyChord(transposeChord(c, shift)) : transposeChord(c, shift)));
+    return chordsDifficulty(shown, changesPerLine(parsed));
+  }, [chords, shift, simplify, parsed]);
+  const toggleFavorite = () => {
+    if (!song.favorite) signal('favorite', { title: song.title, artist: song.artist });
+    patchSong(song.id, { favorite: !song.favorite, updated: Date.now() });
+  };
 
   // Autoscroll.
   useEffect(() => {
@@ -162,6 +178,7 @@ export function SongView({ song, stage = false, setlist }: Props) {
             </span>
           )}
           {parsed.tempo && <span>♩ {parsed.tempo}</span>}
+          {chords.length > 0 && <LevelBadge level={difficulty.level} title={difficulty.hard.length ? `${t('hardChords')}: ${difficulty.hard.join(' ')}` : undefined} />}
         </p>
       </header>
 
@@ -208,6 +225,9 @@ export function SongView({ song, stage = false, setlist }: Props) {
           </button>
           <input type="range" min={0} max={10} step={0.5} value={song.scroll} onChange={(e) => patchSong(song.id, { scroll: Number(e.target.value) })} aria-label={t('speed')} />
         </div>
+        <button className={`chip${listen ? ' on' : ''}`} onClick={() => setListen((l) => !l)}>
+          ▶ {t('listenSong')}
+        </button>
         {stage ? (
           <>
             {setlist && (
@@ -241,7 +261,7 @@ export function SongView({ song, stage = false, setlist }: Props) {
               </button>
               {menu && (
                 <div className="menu" onClick={() => setMenu(false)}>
-                  <button onClick={() => patchSong(song.id, { favorite: !song.favorite })}>{song.favorite ? '★' : '☆'} {t('favorites')}</button>
+                  <button onClick={toggleFavorite}>{song.favorite ? '★' : '☆'} {t('favorites')}</button>
                   {lib.setlists.map((l) => (
                     <button key={l.id} onClick={() => void saveSetlists(lib.setlists.map((x) => (x.id === l.id && !x.songs.includes(song.id) ? { ...x, songs: [...x.songs, song.id], updated: Date.now() } : x)))}>
                       + {l.name}
@@ -263,6 +283,8 @@ export function SongView({ song, stage = false, setlist }: Props) {
           </>
         )}
       </div>
+
+      {listen && <Player song={song} onClose={() => setListen(false)} />}
 
       {!stage && capoTips[0] && capoTips[0].capo !== capo && capoTips[0].score + 0.5 < (capoTips.find((c) => c.capo === capo)?.score ?? 99) && (
         <button className="capo-tip" onClick={() => patchSong(song.id, { capo: capoTips[0].capo })}>

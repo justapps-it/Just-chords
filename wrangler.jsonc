@@ -1,10 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "justchords",
+  "main": "src/worker/index.ts",
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [{ "binding": "USERS", "id": "f43870e697004b0dadb8d2fe9384748c" }],
+  "vars": {
+    "GOOGLE_CLIENT_ID": "600886543133-tmdg4a42m6vk0iimh705i0gpennvt4li.apps.googleusercontent.com"
   },
   "routes": [{ "pattern": "chords.justapps.it", "custom_domain": true }],
   "workers_dev": true

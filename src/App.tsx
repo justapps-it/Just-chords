@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { Dictionary } from './components/Dictionary';
 import { Editor } from './components/Editor';
+import { Find } from './components/Find';
+import { ProfilePage } from './components/ProfilePage';
+import { initAccount, useAccount } from './account';
+import { linkKind } from './lib/sources';
 import { Home } from './components/Home';
 import { Import } from './components/Import';
 import { Listen } from './components/Listen';
@@ -20,14 +24,18 @@ export default function App() {
   const st = useSettings();
   const lib = useLibrary();
   const route = useRoute();
+  const acc = useAccount();
 
   useEffect(() => {
-    void load();
+    void load().then(initAccount);
     // PWA share target / Android share: /share?title=&text=&url=
     if (location.pathname === '/share') {
       const q = new URLSearchParams(location.search);
       history.replaceState(null, '', '/');
-      go(`/import?${q.toString()}`, true);
+      // A chords page, a YouTube / YouTube Music / Spotify link: find the chords.
+      const link = q.get('url') || q.get('text')?.match(/https?:\/\/\S+/)?.[0];
+      if (link && linkKind(link)) go(`/find?url=${encodeURIComponent(link)}`, true);
+      else go(`/import?${q.toString()}`, true);
     }
   }, []);
   useEffect(() => {
@@ -46,6 +54,8 @@ export default function App() {
   if (page === 'song' && song(a)) body = <SongView key={a} song={song(a)!} />;
   else if (page === 'edit' && song(a)) body = <Editor song={song(a)!} />;
   else if (page === 'import') body = <Import />;
+  else if (page === 'find') body = <Find key={location.hash} />;
+  else if (page === 'profile') body = <ProfilePage />;
   else if (page === 'tuner') body = <Tuner />;
   else if (page === 'metronome') body = <MetronomeView />;
   else if (page === 'listen') body = <Listen />;
@@ -85,6 +95,15 @@ export default function App() {
                 <path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" fill="currentColor" />
               </svg>
             </button>
+            <a className="icon-btn account-btn" href="#/profile" aria-label={t('profile')} title={acc.user?.name ?? t('profile')}>
+              {acc.user?.picture ? (
+                <img src={acc.user.picture} alt="" width="28" height="28" referrerPolicy="no-referrer" />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.4 0-9 2.2-9 5v3h18v-3c0-2.8-4.6-5-9-5z" />
+                </svg>
+              )}
+            </a>
             <a className="icon-btn hide-app" href={REPO} target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub">
               <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
                 <path
