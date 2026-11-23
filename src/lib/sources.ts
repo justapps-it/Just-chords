@@ -158,7 +158,8 @@ export function relevant<T extends { title: string; artist: string }>(list: T[],
 
 /** "Albachiara – Vasco Rossi", "Accordi Albachiara Vasco Rossi", or the URL slug. */
 function aesTitle(raw: string, url: string): { title: string; artist: string } {
-  const t = decodeEntities(raw.replace(/<[^>]+>/g, ''))
+  const t = decodeEntities(raw.replace(/<[^>]+>/g, ' '))
+    .replace(/\s+/g, ' ')
     .replace(/^\s*accordi\s+(di\s+|per\s+)?/i, '')
     .replace(/\s*[-–|]\s*accordi\s*e\s*spartiti.*$/i, '')
     .trim();
@@ -306,4 +307,54 @@ export function parseSpotify(html: string): { title: string; artist: string } | 
   const by = t.match(/ - (?:song(?: and lyrics)?|canzone(?: e testo)?) (?:by|di) (.+?) \| Spotify/i);
   if (by) artist = by[1];
   return { title, artist };
+}
+
+// ------------------------------------------------------------------ one per song
+
+const keyOf = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s*[([].*?[)\]]/g, '')
+    .replace(/\b(the|feat|ft)\b.*$/g, (m) => (m.startsWith('the') ? m : ''))
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+const quality = (r: SearchResult) => (r.rating ?? 3.5) * Math.log10(10 + (r.votes ?? 0));
+
+/**
+ * One result per song: the best guitar version by the original artist.
+ * Ukulele and lower-rated versions are dropped, the same song on Accordi e
+ * Spartiti is dropped when Ultimate Guitar has it, and covers (same title,
+ * another artist with far fewer votes) are dropped too.
+ */
+export function onePerSong(list: SearchResult[]): SearchResult[] {
+  const guitar = list.filter((r) => !/ukulele|bass|tab/i.test(r.kind ?? ''));
+  const groups = new Map<string, { best: SearchResult; votes: number; order: number }>();
+  guitar.forEach((r, order) => {
+    const k = `${keyOf(r.title)}|${keyOf(r.artist).split(' ').sort().join(' ')}`;
+    const g = groups.get(k);
+    if (!g) groups.set(k, { best: r, votes: r.votes ?? 0, order });
+    else {
+      g.votes += r.votes ?? 0;
+      // Ultimate Guitar (rated) wins over Accordi e Spartiti, then the best rated.
+      if ((r.source === 'ug' && g.best.source !== 'ug') || (r.source === g.best.source && quality(r) > quality(g.best))) g.best = r;
+    }
+  });
+  const byTitle = new Map<string, number>();
+  for (const [k, g] of groups) byTitle.set(k.split('|')[0], Math.max(byTitle.get(k.split('|')[0]) ?? 0, g.votes));
+  const topAll = Math.max(0, ...[...groups.values()].map((g) => g.votes));
+  return [...groups.entries()]
+    .filter(([k, g]) => {
+      if (/^misc\b|mashup/i.test(g.best.artist)) return false;
+      const top = byTitle.get(k.split('|')[0]) ?? 0;
+      // A cover: same title, a tenth of the votes.
+      if (top >= 50 && g.votes * 10 < top) return false;
+      // Obscure tabs riding on a famous song's words ("Oasis By Wonderwall").
+      if (topAll >= 1000 && g.best.source === 'ug' && g.votes * 100 < topAll) return false;
+      return true;
+    })
+    .sort((a, b) => a[1].order - b[1].order)
+    .map(([, g]) => ({ ...g.best, votes: g.votes || g.best.votes }));
 }

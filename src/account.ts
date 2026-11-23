@@ -2,7 +2,7 @@
 // without an account; signing in with Google keeps profile and library in
 // sync across devices.
 import { useSyncExternalStore } from 'react';
-import { ApiError, callNative, getToken, inAndroidApp, loginWithGoogle, me, native, putProfile, setToken, syncLibrary, type User } from './api';
+import { ApiError, callNative, deleteAccountApi, getToken, inAndroidApp, loginWithGoogle, me, native, putProfile, setToken, syncLibrary, type User } from './api';
 import { emptyProfile, genresOfArtist, learn, type Profile, type Signal } from './lib/recs';
 import { estimateLevel, songDifficulty, type Level } from './lib/difficulty';
 import { exportLibrary, importLibrary, onLibraryChange, type Song } from './store';
@@ -99,6 +99,22 @@ export function logout() {
   write(UKEY, null);
   set({ user: null, sync: 'idle' });
   (window as unknown as { google?: { accounts: { id: { disableAutoSelect(): void } } } }).google?.accounts.id.disableAutoSelect();
+}
+
+/** Deletes the account and everything stored for it on the server. The copy on this device stays. */
+export async function deleteAccount() {
+  await deleteAccountApi();
+  logout();
+}
+
+/** Everything about me, as a JSON file (data portability). */
+export function downloadMyData() {
+  const data = { exported: new Date().toISOString(), user: state.user, profile: state.profile, library: exportLibrary() };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+  a.download = 'just-chords-data.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 let syncing: Promise<void> | null = null;

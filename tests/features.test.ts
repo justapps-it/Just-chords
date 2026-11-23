@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aesArtist, relevant, parseAesApi, parseAesSearch, parseAesSong, parseSpotify, parseUgSearch, parseUgTab, splitVideoTitle, youtubeId, linkKind, sourceOf } from '../src/lib/sources';
+import { onePerSong, aesArtist, relevant, parseAesApi, parseAesSearch, parseAesSong, parseSpotify, parseUgSearch, parseUgTab, splitVideoTitle, youtubeId, linkKind, sourceOf } from '../src/lib/sources';
 import { chordsDifficulty, songDifficulty, estimateLevel } from '../src/lib/difficulty';
 import { emptyProfile, learn, plan, rank, songKey, type Candidate } from '../src/lib/recs';
 import { mergeLibrary } from '../src/lib/sync';
@@ -57,6 +57,29 @@ describe('sources', () => {
     expect(aesArtist('de-andre-fabrizio')).toBe('Fabrizio De Andre');
     expect(aesArtist('modena-city-ramblers')).toBe('Modena City Ramblers');
     expect(relevant([{ title: 'Albachiara', artist: 'Vasco Rossi' }, { title: '5 Minuti', artist: 'Alfa' }], 'albachiara')).toHaveLength(1);
+  });
+
+  it('keeps one result per song: the best version by the original artist', () => {
+    const r = (source: 'ug' | 'aes', title: string, artist: string, votes?: number, rating?: number, kind = 'Chords') => ({ source, title, artist, url: `${source}${title}${artist}${votes}${kind}`, votes, rating, kind });
+    const out = onePerSong([
+      r('ug', 'Albachiara', 'Vasco Rossi', 465, 4.8),
+      r('ug', 'Albachiara', 'Vasco Rossi', 8, 4.8, 'Chords v2'),
+      r('ug', 'Albachiara', 'Vasco Rossi', 14, 4.7, 'Ukulele Chords'),
+      r('ug', 'Albachiara', 'Noemi (Italy)', 2, 5),
+      r('aes', 'Albachiara', 'Vasco Rossi'),
+      r('aes', 'Vita spericolata', 'Vasco Rossi'),
+      r('ug', 'Hello', 'Adele', 900, 4.7),
+      r('ug', 'Hello', 'Lionel Richie', 300, 4.8),
+    ]);
+    expect(out.map((x) => `${x.title}/${x.artist}/${x.source}`)).toEqual(['Albachiara/Vasco Rossi/ug', 'Vita spericolata/Vasco Rossi/aes', 'Hello/Adele/ug', 'Hello/Lionel Richie/ug']);
+    expect(out[0].votes).toBe(473);
+    const ww = onePerSong([
+      r('ug', 'Wonderwall', 'Oasis', 30769, 4.8),
+      r('ug', 'Oasis By Wonderwall', 'Sledding With Tigers', 5, 5),
+      r('ug', 'Oasis - Wonderwall - Collective Soul - Shine', 'Misc Mashups', 0, 0),
+      r('aes', 'Wonderwall', 'Oasis'),
+    ]);
+    expect(ww.map((x) => `${x.title}/${x.artist}`)).toEqual(['Wonderwall/Oasis']);
   });
 
   it('understands YouTube, YouTube Music and Spotify links', () => {

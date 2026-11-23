@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { canNativeSignIn, effectiveLevel, logout, nativeSignIn, renderGoogleButton, setProfile, syncNow, useAccount } from '../account';
+import { canNativeSignIn, deleteAccount, downloadMyData, effectiveLevel, logout, nativeSignIn, renderGoogleButton, setProfile, syncNow, useAccount } from '../account';
 import { GENRES } from '../lib/recs';
 import type { Level } from '../lib/difficulty';
 import { useT } from '../i18n';
@@ -16,13 +16,15 @@ export function ProfilePage() {
   const p = acc.profile;
   const btn = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState('');
+  // Accounts need the 14+ confirmation and acceptance of terms and privacy policy.
+  const [consent, setConsent] = useState(false);
   const estimated = effectiveLevel(lib.songs);
 
   useEffect(() => {
-    if (acc.user || canNativeSignIn() || !btn.current) return;
+    if (acc.user || canNativeSignIn() || !btn.current || !consent) return;
     btn.current.innerHTML = '';
     renderGoogleButton(btn.current, st.lang, (e) => setErr(e.message)).catch((e: Error) => setErr(e.message));
-  }, [acc.user, st.lang]);
+  }, [acc.user, st.lang, consent]);
 
   const toggleGenre = (id: string) => setProfile({ ...p, genres: p.genres.includes(id) ? p.genres.filter((g) => g !== id) : [...p.genres, id] });
   const artists = Object.entries(p.artists)
@@ -56,12 +58,34 @@ export function ProfilePage() {
                 {t('logout')}
               </button>
             </div>
+            <div className="account-legal">
+              <button className="link-btn small" onClick={downloadMyData}>
+                {t('downloadData')}
+              </button>
+              <button
+                className="link-btn small danger"
+                onClick={() => {
+                  if (confirm(t('deleteAccountConfirm'))) deleteAccount().catch((e: Error) => setErr(e.message));
+                }}
+              >
+                {t('deleteAccount')}
+              </button>
+            </div>
+            {err && <p className="error small">{err}</p>}
           </div>
         ) : (
           <div>
             <h2>{t('loginTitle')}</h2>
             <p className="muted">{t('loginText')}</p>
-            {canNativeSignIn() ? (
+            <label className="consent">
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              <span>
+                {t('consentAge')} <a href="#/terms">{t('terms')}</a> {t('consentAnd')} <a href="#/privacy">{t('privacy2')}</a>.
+              </span>
+            </label>
+            {!consent ? (
+              <p className="muted small">{t('consentNeeded')}</p>
+            ) : canNativeSignIn() ? (
               <button className="btn primary big" onClick={() => nativeSignIn().catch((e: Error) => setErr(e.message))}>
                 <GoogleG /> {t('loginGoogle')}
               </button>

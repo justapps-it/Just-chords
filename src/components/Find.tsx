@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { fetchSong, resolveLink, searchChords } from '../api';
-import { effectiveLevel, signal } from '../account';
+import { signal } from '../account';
 import { importText } from '../lib/chordpro';
-import { songDifficulty, type Level } from '../lib/difficulty';
+import { songDifficulty } from '../lib/difficulty';
 import { linkKind, searchUrl, type LinkInfo, type SearchResult } from '../lib/sources';
 import { useT } from '../i18n';
 import { go, routeQuery } from '../router';
-import { findBySource, patchSong, saveSong, useLibrary } from '../store';
+import { findBySource, patchSong, saveSong } from '../store';
 import { LevelBadge } from './LevelBadge';
 
 const SOURCE_NAME = { ug: 'Ultimate Guitar', aes: 'Accordi e Spartiti' } as const;
@@ -31,8 +31,6 @@ export async function openChords(url: string, hint: { title?: string; artist?: s
 export function Find() {
   const t = useT();
   const q = routeQuery();
-  const lib = useLibrary();
-  const level = effectiveLevel(lib.songs);
   const [query, setQuery] = useState(q.get('q') ?? '');
   const [info, setInfo] = useState<LinkInfo | null>(null);
   const [results, setResults] = useState<SearchResult[] | null>(null);
@@ -78,9 +76,8 @@ export function Find() {
       if (text.trim().length < 2) return;
       const r = await searchChords(text);
       if (!live) return;
-      const fit = (l?: Level) => (l ? Math.abs(l - level) : 0.7);
-      // Keep each site's order, but bring versions at my level up.
-      setResults([...r.results].sort((a, b) => (a.source === b.source ? fit(a.level) - fit(b.level) : 0)));
+      // One result per song, in the order of relevance the server gives.
+      setResults(r.results);
       setFailed(!r.results.length);
     })();
     return () => {

@@ -182,7 +182,7 @@ class MainActivity : ComponentActivity() {
         Triple(0, url, "too many redirects")
     }
 
-    private fun googleSignIn(id: String) = lifecycleScope.launch {
+    private fun startGoogleSignIn(id: String) = lifecycleScope.launch {
         try {
             val option = GetSignInWithGoogleOption.Builder(getString(R.string.google_web_client_id)).build()
             val res = CredentialManager.create(this@MainActivity).getCredential(this@MainActivity, GetCredentialRequest(listOf(option)))
@@ -190,7 +190,10 @@ class MainActivity : ComponentActivity() {
             reply(id, true, 200, "", token)
         } catch (e: GetCredentialCancellationException) {
             reply(id, false, 0, "", "")
-        } catch (e: Exception) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            // Never crash on sign-in: the page shows the error instead.
             reply(id, false, 0, "", e.message ?: e.javaClass.simpleName)
         }
     }
@@ -213,7 +216,9 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun googleSignIn(id: String) {
-            runOnUiThread { googleSignIn(id) }
+            // Explicitly the activity's method: an unqualified call here resolved
+            // to this bridge method itself and recursed until the app crashed.
+            runOnUiThread { this@MainActivity.startGoogleSignIn(id) }
         }
     }
 }

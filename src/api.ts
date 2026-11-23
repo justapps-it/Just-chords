@@ -1,7 +1,7 @@
 // Client for the Just-Chords API (src/worker). In the Android app the pages
 // are served from appassets.androidplatform.net, so the API is called on the
 // real domain; song pages are fetched by the phone itself when possible.
-import { parseSong, relevant, searchUrl, sourceOf, parseUgSearch, type FetchedSong, type LinkInfo, type SearchResult } from './lib/sources';
+import { onePerSong, parseSong, relevant, searchUrl, sourceOf, parseUgSearch, type FetchedSong, type LinkInfo, type SearchResult } from './lib/sources';
 import type { Profile, Rec } from './lib/recs';
 import type { Level } from './lib/difficulty';
 import type { Library } from './lib/sync';
@@ -94,7 +94,7 @@ export async function searchChords(q: string): Promise<{ results: SearchResult[]
   const phoneUg = html ? relevant(parseUgSearch(html), q) : [];
   const w = await viaWorker;
   if (!phoneUg.length) return w;
-  return { results: [...phoneUg.slice(0, 15), ...w.results.filter((r) => r.source !== 'ug')], errors: {} };
+  return { results: onePerSong([...phoneUg, ...w.results.filter((r) => r.source !== 'ug')]), errors: {} };
 }
 
 export async function fetchSong(url: string): Promise<FetchedSong> {
@@ -117,7 +117,11 @@ export interface User {
   picture?: string;
 }
 
-export const loginWithGoogle = (credential: string) => api<{ token: string; user: User; profile: Profile | null }>('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential }) });
+/** Version of terms and privacy policy the user accepts at sign-in. */
+export const TERMS_VERSION = '2026-11-23';
+export const loginWithGoogle = (credential: string) =>
+  api<{ token: string; user: User; profile: Profile | null }>('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential, consent: { age14: true, terms: TERMS_VERSION } }) });
+export const deleteAccountApi = () => api<{ deleted: boolean }>('/api/account', { method: 'DELETE' });
 export const me = () => api<{ user: User; profile: Profile | null }>('/api/me');
 export const putProfile = (p: Profile) => api<{ profile: Profile }>('/api/profile', { method: 'PUT', body: JSON.stringify(p) });
 export const syncLibrary = (lib: Library) => api<Library>('/api/sync', { method: 'POST', body: JSON.stringify(lib) });

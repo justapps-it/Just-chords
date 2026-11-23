@@ -8,7 +8,7 @@
 //   GET  /api/me               account, profile
 //   PUT  /api/profile          save profile
 //   POST /api/sync             merge the library with the account copy
-import { aesApiSearchUrl, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
+import { aesApiSearchUrl, onePerSong, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
 import { CURATED, GENRES, emptyProfile, plan, rank, type Candidate, type Profile } from '../lib/recs';
 import { mergeLibrary, type Library } from '../lib/sync';
 import type { Level } from '../lib/difficulty';
@@ -16,6 +16,7 @@ import type { Level } from '../lib/difficulty';
 interface KV {
   get(key: string, type: 'json'): Promise<any>;
   put(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
 }
 interface Env {
   ASSETS: { fetch(req: Request): Promise<Response> };
@@ -27,7 +28,7 @@ interface Env {
 
 const UA = 'Mozilla/5.0 (compatible; JustChords/1.1; +https://chords.justapps.it)';
 const ORIGINS = ['https://chords.justapps.it', 'https://appassets.androidplatform.net', 'http://localhost:5173', 'http://localhost:4173'];
-const CACHE_V = '3';
+const CACHE_V = '5';
 const edge = (caches as unknown as { default: Cache }).default;
 
 class HttpError extends Error {
@@ -45,7 +46,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req);
     const origin = req.headers.get('origin') ?? '';
     const cors: Record<string, string> = ORIGINS.includes(origin)
-      ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS', 'access-control-max-age': '86400', vary: 'origin' }
+      ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS', 'access-control-max-age': '86400', vary: 'origin' }
       : {};
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -71,14 +72,25 @@ export default {
       }
       if (url.pathname === '/api/recs' && req.method === 'POST') return json(await recommend(await req.json()));
       if (url.pathname === '/api/auth/google' && req.method === 'POST') {
-        const { credential } = (await req.json()) as { credential?: string };
+        const { credential, consent } = (await req.json()) as { credential?: string; consent?: { age14?: boolean; terms?: string } };
+        // Accounts are for people aged 14 or over who accepted terms and privacy policy.
+        if (consent?.age14 !== true || typeof consent.terms !== 'string') throw new HttpError(400, 'consent required');
         const user = await verifyGoogle(String(credential ?? ''), env.GOOGLE_CLIENT_ID);
         const token = await sign({ ...user, exp: Date.now() + 180 * 864e5 }, env);
         const stored = (await env.USERS.get(`p:${user.sub}`, 'json')) as Profile | null;
-        await env.USERS.put(`u:${user.sub}`, JSON.stringify({ ...user, last: Date.now() }));
+        const prev = (await env.USERS.get(`u:${user.sub}`, 'json')) as { consent?: unknown; created?: number } | null;
+        await env.USERS.put(
+          `u:${user.sub}`,
+          JSON.stringify({ ...user, created: prev?.created ?? Date.now(), last: Date.now(), consent: { age14: true, terms: consent.terms.slice(0, 20), at: Date.now() } }),
+        );
         return json({ token, user, profile: stored });
       }
       const me = await session(req, env);
+      if (url.pathname === '/api/account' && req.method === 'DELETE') {
+        // Right to erasure: everything stored for this account, at once.
+        await Promise.all([env.USERS.delete(`u:${me.sub}`), env.USERS.delete(`p:${me.sub}`), env.USERS.delete(`l:${me.sub}`)]);
+        return json({ deleted: true });
+      }
       if (url.pathname === '/api/me' && req.method === 'GET') return json({ user: me, profile: await env.USERS.get(`p:${me.sub}`, 'json') });
       if (url.pathname === '/api/profile' && req.method === 'PUT') {
         const incoming = (await req.json()) as Profile;
@@ -127,7 +139,7 @@ async function search(q: string) {
     })
     .catch((e) => ((errors.aes = String(e)), [] as SearchResult[]));
   const [a, b] = await Promise.all([ug, aes]);
-  return { data: { results: [...a.slice(0, 15), ...b], errors }, ttl: a.length + b.length ? 6 * 3600 : 300 };
+  return { data: { results: onePerSong([...a, ...b]), errors }, ttl: a.length + b.length ? 6 * 3600 : 300 };
 }
 
 async function song(url: string) {

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Dictionary } from './components/Dictionary';
 import { Editor } from './components/Editor';
 import { Find } from './components/Find';
+import { Legal } from './components/Legal';
 import { ProfilePage } from './components/ProfilePage';
 import { initAccount, useAccount } from './account';
 import { linkKind } from './lib/sources';
@@ -28,6 +29,10 @@ export default function App() {
 
   useEffect(() => {
     void load().then(initAccount);
+    // Plain URLs for the legal pages (Google's consent screen links to them).
+    if (location.pathname === '/privacy' || location.pathname === '/terms') {
+      history.replaceState(null, '', `/#${location.pathname}`);
+    }
     // PWA share target / Android share: /share?title=&text=&url=
     if (location.pathname === '/share') {
       const q = new URLSearchParams(location.search);
@@ -56,6 +61,7 @@ export default function App() {
   else if (page === 'import') body = <Import />;
   else if (page === 'find') body = <Find key={location.hash} />;
   else if (page === 'profile') body = <ProfilePage />;
+  else if (page === 'privacy' || page === 'terms') body = <Legal doc={page} />;
   else if (page === 'tuner') body = <Tuner />;
   else if (page === 'metronome') body = <MetronomeView />;
   else if (page === 'listen') body = <Listen />;
@@ -119,7 +125,7 @@ export default function App() {
       {!stage && (
         <footer className="foot">
           <span>
-            Just-Chords · <a href="https://www.justapps.it">JustApps</a> · <a href={REPO}>GPL-3.0</a>
+            Just-Chords · <a href="https://www.justapps.it">JustApps</a> · <a href={REPO}>GPL-3.0</a> · <a href="#/privacy">Privacy</a> · <a href="#/terms">{t('terms')}</a>
           </span>
         </footer>
       )}

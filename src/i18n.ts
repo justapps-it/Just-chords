@@ -153,6 +153,14 @@ const it = {
   pasteYoutube: 'Incolla un link YouTube',
   searchYoutube: 'Cerca su YouTube',
   hardChords: 'Accordi impegnativi',
+  consentAge: 'Ho almeno 14 anni e accetto i',
+  terms: 'Termini',
+  consentAnd: 'e l’',
+  privacy2: 'Informativa privacy',
+  consentNeeded: 'Spunta la casella per accedere con Google.',
+  downloadData: 'Scarica i miei dati',
+  deleteAccount: 'Elimina account',
+  deleteAccountConfirm: 'Eliminare l’account? Profilo, libreria e scalette vengono cancellati subito dal server. La copia su questo dispositivo resta.',
 };
 
 export type Key = keyof typeof it;
@@ -310,6 +318,14 @@ const en: Record<Key, string> = {
   pasteYoutube: 'Paste a YouTube link',
   searchYoutube: 'Search on YouTube',
   hardChords: 'Harder chords',
+  consentAge: 'I am at least 14 and I accept the',
+  terms: 'Terms',
+  consentAnd: 'and the',
+  privacy2: 'Privacy policy',
+  consentNeeded: 'Tick the box to sign in with Google.',
+  downloadData: 'Download my data',
+  deleteAccount: 'Delete account',
+  deleteAccountConfirm: 'Delete your account? Profile, library and setlists are erased from the server right away. The copy on this device stays.',
 };
 
 export function useT() {
