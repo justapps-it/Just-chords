@@ -57,9 +57,10 @@ writeFileSync(gradleFile, gradle.replace(/versionCode = \d+/, `versionCode = ${c
 const env = { ...process.env, ANDROID_HOME: process.env.ANDROID_HOME ?? join(homedir(), 'android-sdk') };
 if (!existsSync(join(android, 'local.properties'))) writeFileSync(join(android, 'local.properties'), `sdk.dir=${env.ANDROID_HOME}\n`);
 try {
-  // The web app is bundled in the APK.
+  // The app is native; its texts come from the web app and must match it.
   run('npm', ['test'], { cwd: root });
-  run('npm', ['run', 'build'], { cwd: root });
+  run('node', ['scripts/gen-android-strings.mjs'], { cwd: root });
+  if (out('git', ['status', '--porcelain', 'android/app/src/main'], { cwd: root })) throw new Error('texts out of date: commit the regenerated I18n.kt / LegalText.kt');
   run('./gradlew', [':app:testDebugUnitTest', ':app:assembleRelease', '--no-daemon', '-q'], { cwd: android, env });
 } catch {
   writeFileSync(gradleFile, gradle);

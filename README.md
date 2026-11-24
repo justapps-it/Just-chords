@@ -12,8 +12,8 @@ Live at **https://chords.justapps.it**, Android APK in the [releases](https://gi
 - **Interactive sheet**: transpose, capo (with a suggested capo for easier shapes), simplify chords, C D E or Do Re Mi notation, font size, autoscroll.
 - **Chord diagrams for any chord**: guitar (any tuning), ukulele and piano, generated from music theory, several voicings each, left-handed mode.
 - **Stage mode**: setlists, full screen, autoscroll, Bluetooth page-turner pedals (↓/Space/PageDown scroll, →/← next/previous song), screen kept on.
-- **Audio, all on your device (WebAssembly)**: live chord recognition from the microphone, chord recognition from an audio file (chroma + Viterbi), chromatic tuner (YIN) with alternate tunings, sample-accurate metronome with tap tempo.
-- Songs are stored on your device (IndexedDB), and in your account when signed in. Offline PWA. No ads.
+- **Audio, all on your device (WebAssembly on the web, native code in the app)**: live chord recognition from the microphone, chord recognition from an audio file (chroma + Viterbi), chromatic tuner (YIN) with alternate tunings, sample-accurate metronome with tap tempo.
+- Songs are stored on your device (IndexedDB on the web, a JSON file in the app), and in your account when signed in. Offline PWA. No ads.
 
 ## Backend
 
@@ -38,6 +38,22 @@ node scripts/e2e.mjs http://localhost:4173   # browser end-to-end test
 ```
 
 The DSP is written in AssemblyScript (`assembly/index.ts`) and compiled to `public/dsp.wasm`.
+
+## Android app
+
+`android/` is a native app (Kotlin, Jetpack Compose, Material 3 with the JustApps look, full screen). It does everything the website does, with the same logic and the same API, so library, setlists and taste profile sync between the two:
+
+- `core/`: music theory, ChordPro and import parser, voicings, difficulty, taste profile, song-page parsers and the DSP (chroma, YIN, Viterbi), ported from `src/lib` and `src/audio` and tested against the same cases (`CoreTest`).
+- `data/`: the library as JSON in the web app's format, settings, the API client and the Google account (Credential Manager, 14+ consent, sync, export, delete).
+- `ui/`: the screens. Texts and legal pages are generated from the web app with `node scripts/gen-android-strings.mjs`.
+- `audio/`: microphone (AudioRecord), metronome (AudioTrack), audio file decoding (MediaCodec).
+
+```bash
+cd android
+./gradlew testDebugUnitTest          # core tests + screen rendering
+./gradlew recordRoborazziDebug       # screenshots in app/build/outputs/roborazzi
+npm run release:android -- patch     # from the root: build, sign, commit, publish
+```
 
 ## License
 
