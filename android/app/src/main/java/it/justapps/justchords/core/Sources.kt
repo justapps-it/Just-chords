@@ -31,7 +31,10 @@ data class FetchedSong(
     val level: Int? = null,
 )
 
-enum class LinkKind { YOUTUBE, SPOTIFY, CHORDS }
+enum class LinkKind { YOUTUBE, SPOTIFY, CHORDS, TIKTOK, INSTAGRAM }
+
+/** A video to play and analyse: the platform and its id. */
+data class VideoRef(val platform: String, val id: String)
 
 object Sources {
     private val HOSTS = mapOf(
@@ -228,7 +231,30 @@ object Sources {
         if (youtubeId(url) != null) return LinkKind.YOUTUBE
         val u = uri(url) ?: return null
         if (u.host == "open.spotify.com" && u.path.contains("/track/")) return LinkKind.SPOTIFY
+        socialVideo(url)?.let { return if (it.platform == "tiktok") LinkKind.TIKTOK else LinkKind.INSTAGRAM }
+        if (isShortTiktok(url)) return LinkKind.TIKTOK
         return null
+    }
+
+    /** TikTok and Instagram video links (short vm.tiktok.com links need resolving first). */
+    fun socialVideo(url: String): VideoRef? {
+        val u = uri(url) ?: return null
+        val host = u.host.lowercase().removePrefix("www.").removePrefix("m.")
+        val path = u.path ?: return null
+        if (host == "tiktok.com") return Regex("/(?:video|v|photo|embed(?:/v2)?|player/v1)/(\\d{8,})").find(path)?.let { VideoRef("tiktok", it.groupValues[1]) }
+        if (host == "instagram.com") return Regex("^/(?:[\\w.]+/)?(?:reels?|p|tv)/([\\w-]{5,})").find(path)?.let { VideoRef("instagram", it.groupValues[1]) }
+        return null
+    }
+
+    fun isShortTiktok(url: String) = Regex("^https://(vm|vt)\\.tiktok\\.com/\\w+").containsMatchIn(url.trim()) || Regex("^https://(www\\.)?tiktok\\.com/t/\\w+").containsMatchIn(url.trim())
+
+    fun videoRef(url: String): VideoRef? = youtubeId(url)?.let { VideoRef("youtube", it) } ?: socialVideo(url)
+
+    /** Official embedded players: the video is played, never downloaded. */
+    fun embedUrl(v: VideoRef): String = when (v.platform) {
+        "youtube" -> "https://www.youtube-nocookie.com/embed/${v.id}?rel=0&playsinline=1&modestbranding=1"
+        "tiktok" -> "https://www.tiktok.com/player/v1/${v.id}?music_info=1&description=1&rel=0"
+        else -> "https://www.instagram.com/reel/${v.id}/embed/"
     }
 
     fun firstLink(text: String) = Regex("https?://\\S+").find(text)?.value

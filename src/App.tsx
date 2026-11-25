@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Analyze } from './components/Analyze';
 import { Dictionary } from './components/Dictionary';
 import { Editor } from './components/Editor';
 import { Find } from './components/Find';
@@ -39,7 +40,10 @@ export default function App() {
       history.replaceState(null, '', '/');
       // A chords page, a YouTube / YouTube Music / Spotify link: find the chords.
       const link = q.get('url') || q.get('text')?.match(/https?:\/\/\S+/)?.[0];
-      if (link && linkKind(link)) go(`/find?url=${encodeURIComponent(link)}`, true);
+      const kind = link ? linkKind(link) : null;
+      // TikTok and Instagram videos: listen to them and work out the chords.
+      if (link && (kind === 'tiktok' || kind === 'instagram')) go(`/analyze?url=${encodeURIComponent(link)}`, true);
+      else if (link && kind) go(`/find?url=${encodeURIComponent(link)}`, true);
       else go(`/import?${q.toString()}`, true);
     }
   }, []);
@@ -60,6 +64,7 @@ export default function App() {
   else if (page === 'edit' && song(a)) body = <Editor song={song(a)!} />;
   else if (page === 'import') body = <Import />;
   else if (page === 'find') body = <Find key={location.hash} />;
+  else if (page === 'analyze') body = <Analyze key={location.hash} />;
   else if (page === 'profile') body = <ProfilePage />;
   else if (page === 'privacy' || page === 'terms') body = <Legal doc={page} />;
   else if (page === 'tuner') body = <Tuner />;

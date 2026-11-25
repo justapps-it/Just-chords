@@ -5,6 +5,7 @@ Live at **https://chords.justapps.it**, Android APK in the [releases](https://gi
 
 - **Find chords**: search a song and get the versions on Ultimate Guitar and Accordi e Spartiti (rating, votes, level); the one you pick is opened and saved with a link to its source. The Android app downloads the page from the phone itself; the web app goes through the Worker. Pasting text or a ChordPro file still works: the importer understands chords-over-lyrics, Ultimate Guitar `[ch]` markup, Italian notation (DO, RE, LAm, SOL7…) and ChordPro.
 - **Links**: paste or share a Spotify, YouTube or YouTube Music link to get the chords of that song.
+- **Analyse a video**: send a YouTube, TikTok or Instagram video (or an audio/video file) and Just-Chords listens to it while it plays in the official embedded player, then tells you how to play it: chords over time, key, tempo, the capo that gives the easiest shapes, a strumming pattern for the tempo, the chords to practise. With synced lyrics on, Whisper (Cloudflare Workers AI) transcribes the singing with word timestamps and the chords land on the right syllables. Videos are never downloaded: the Android app hears its own playback through Android's audio playback capture, the website the tab's audio (Chrome desktop), or the microphone.
 - **Listen while you play**: a YouTube player next to the sheet (found automatically with a YouTube Data API key, or from a pasted link).
 - **Levels**: every song gets a difficulty (easy / intermediate / advanced) from its chords with the best capo, barre chords, how many chords and how often they change.
 - **For you**: recommendations from a taste profile (genres, level, artists learnt from what you import, open, star, 👍/👎), related artists and genre seeds from Deezer, and a curated list of songs by level.
@@ -17,10 +18,11 @@ Live at **https://chords.justapps.it**, Android APK in the [releases](https://gi
 
 ## Backend
 
-`src/worker/index.ts` is a Cloudflare Worker in front of the static app: `/api/search`, `/api/song`, `/api/link`, `/api/yt`, `/api/recs`, `/api/auth/google`, `/api/me`, `/api/profile`, `/api/sync`. Accounts and libraries are in the `USERS` KV namespace. Configuration:
+`src/worker/index.ts` is a Cloudflare Worker in front of the static app: `/api/search`, `/api/song`, `/api/link`, `/api/yt`, `/api/recs`, `/api/auth/google`, `/api/me`, `/api/profile`, `/api/sync`, `/api/transcribe` (≤ 35 s WAV clips → words with timestamps, Whisper on Workers AI, 20 minutes per IP per day). Accounts and libraries are in the `USERS` KV namespace. Configuration:
 
 - `GOOGLE_CLIENT_ID` (var, in `wrangler.jsonc`): OAuth web client. Authorized JavaScript origin: `https://chords.justapps.it`.
 - `SESSION_SECRET` (secret): signs session tokens. `openssl rand -hex 32 | npx wrangler secret put SESSION_SECRET`
+- `AI` (Workers AI binding): Whisper for synced lyrics.
 - `YOUTUBE_API_KEY` (secret, optional): YouTube Data API v3 key to find the video of a song automatically.
 - Android: an Android OAuth client for `it.justapps.justchords` with the signing certificate SHA-1, in the same Google Cloud project.
 

@@ -20,11 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -106,6 +108,10 @@ fun FindScreen(q0: String?, url: String?, hintTitle: String?, hintArtist: String
             if (kind == null) {
                 err = t("linkUnsupported"); return@LaunchedEffect
             }
+            if (kind == LinkKind.TIKTOK || kind == LinkKind.INSTAGRAM) {
+                nav.navigate("analyze?url=${enc(url)}") { popUpTo("find?q={q}&url={url}&t={t}&a={a}&yt={yt}") { inclusive = true } }
+                return@LaunchedEffect
+            }
             searching = true
             try {
                 val li = a.account.api.link(url)
@@ -149,14 +155,24 @@ fun FindScreen(q0: String?, url: String?, hintTitle: String?, hintArtist: String
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = pad.calculateTopPadding(), bottom = 32.dp)) {
             item { SearchField(query, { query = it }, t("searchOrLink"), Modifier.padding(horizontal = 16.dp), submit) }
             info?.let { li ->
-                item {
+                item { Column {
                     Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AssistChip({}, { Text(if (li.kind == "spotify") "Spotify" else "YouTube") })
                         Spacer(Modifier.width(10.dp))
                         Text(li.title ?: "", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
                         li.artist?.let { Text(" · $it", color = just.muted, maxLines = 1) }
                     }
-                }
+                    if (li.youtubeId != null) {
+                        FilledTonalButton(
+                            { nav.navigate("analyze?url=${enc(li.url)}") },
+                            Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(t("analyze"))
+                        }
+                    }
+                } }
             }
             if (err.isNotEmpty()) item { Text(err, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(20.dp)) }
             if (busy != null && url != null && Sources.linkKind(url) == LinkKind.CHORDS) item {

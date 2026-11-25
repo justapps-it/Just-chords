@@ -77,6 +77,7 @@ export function Home() {
       <section className="tools">
         {(
           [
+            ['analyze', '✨', '/analyze'],
             ['tuner', '🎸', '/tuner'],
             ['metronome', '⏱', '/metronome'],
             ['listen', '🎧', '/listen'],

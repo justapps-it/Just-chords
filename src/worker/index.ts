@@ -8,7 +8,8 @@
 //   GET  /api/me               account, profile
 //   PUT  /api/profile          save profile
 //   POST /api/sync             merge the library with the account copy
-import { aesApiSearchUrl, onePerSong, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
+//   POST /api/transcribe       a WAV clip (≤ 35 s) → words with timestamps (Whisper, Workers AI)
+import { aesApiSearchUrl, isShortTiktok, onePerSong, socialVideo, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
 import { CURATED, GENRES, emptyProfile, plan, rank, type Candidate, type Profile } from '../lib/recs';
 import { mergeLibrary, type Library } from '../lib/sync';
 import type { Level } from '../lib/difficulty';
@@ -24,6 +25,7 @@ interface Env {
   GOOGLE_CLIENT_ID: string;
   SESSION_SECRET?: string;
   YOUTUBE_API_KEY?: string;
+  AI?: { run(model: string, input: Record<string, unknown>): Promise<unknown> };
 }
 
 const UA = 'Mozilla/5.0 (compatible; JustChords/1.1; +https://chords.justapps.it)';
@@ -70,6 +72,7 @@ export default {
         ctx.waitUntil(edge.put(key, new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${ttl}` } })));
         return json(data);
       }
+      if (url.pathname === '/api/transcribe' && req.method === 'POST') return json(await transcribe(req, url, env));
       if (url.pathname === '/api/recs' && req.method === 'POST') return json(await recommend(await req.json()));
       if (url.pathname === '/api/auth/google' && req.method === 'POST') {
         const { credential, consent } = (await req.json()) as { credential?: string; consent?: { age14?: boolean; terms?: string } };
@@ -165,6 +168,19 @@ async function link(url: string) {
   } catch {
     throw new HttpError(400, 'not a link');
   }
+  // TikTok / Instagram: the video id for the embedded player, and the caption when there is one.
+  if (isShortTiktok(url)) {
+    const r = await fetch(u.toString(), { headers: { 'user-agent': UA }, redirect: 'follow' });
+    u = new URL(r.url || u.toString());
+  }
+  const social = socialVideo(u.toString());
+  if (social?.platform === 'tiktok') {
+    const canonical = `https://www.tiktok.com/@_/video/${social.id}`;
+    const o = await get(`https://www.tiktok.com/oembed?url=${encodeURIComponent(u.toString().includes('/video/') ? u.toString().split('?')[0] : canonical)}`, 'application/json').catch(() => null);
+    const d = o?.ok ? ((await o.json()) as { title?: string; author_name?: string }) : {};
+    return { data: { kind: 'tiktok', url, videoId: social.id, title: (d.title ?? '').slice(0, 140), artist: d.author_name ?? '' }, ttl: 7 * 86400 };
+  }
+  if (social?.platform === 'instagram') return { data: { kind: 'instagram', url, videoId: social.id, title: '', artist: '' }, ttl: 7 * 86400 };
   if (u.hostname === 'open.spotify.com' || u.hostname === 'spotify.link') {
     const r = await get(u.toString());
     const info = r.ok ? parseSpotify(await r.text()) : null;
@@ -177,6 +193,70 @@ async function link(url: string) {
     throw new HttpError(502, 'spotify unavailable');
   }
   throw new HttpError(400, 'unsupported link');
+}
+
+// ------------------------------------------------------------------ lyrics
+
+const WHISPER = '@cf/openai/whisper-large-v3-turbo';
+const DAILY_SECONDS = 20 * 60;
+
+interface Word {
+  w: string;
+  s: number;
+  e: number;
+}
+
+/** Duration of a 16-bit PCM WAV, or null if it is not one. */
+function wavSeconds(b: Uint8Array): number | null {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (b.length < 44 || v.getUint32(0, false) !== 0x52494646 || v.getUint32(8, false) !== 0x57415645) return null;
+  const channels = v.getUint16(22, true);
+  const rate = v.getUint32(24, true);
+  const bits = v.getUint16(34, true);
+  if (!rate || !channels || bits !== 16) return null;
+  return (b.length - 44) / (rate * channels * 2);
+}
+
+function toBase64(b: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/** Whisper output (segments with words, or a flat word list) → words with times. */
+export function whisperWords(out: unknown, offset = 0): { words: Word[]; text: string } {
+  const o = (out ?? {}) as { text?: string; words?: { word: string; start: number; end: number }[]; segments?: { start: number; end: number; text: string; words?: { word: string; start: number; end: number }[] }[] };
+  const raw = o.segments?.some((s) => s.words?.length) ? o.segments.flatMap((s) => s.words ?? []) : (o.words ?? []);
+  let words = raw.filter((w) => w && typeof w.word === 'string' && w.word.trim()).map((w) => ({ w: w.word.trim(), s: +(w.start + offset).toFixed(2), e: +(w.end + offset).toFixed(2) }));
+  // No word timings: spread each segment's words over its span.
+  if (!words.length && o.segments?.length) {
+    words = o.segments.flatMap((seg) => {
+      const ws = seg.text.trim().split(/\s+/).filter(Boolean);
+      const step = (seg.end - seg.start) / Math.max(1, ws.length);
+      return ws.map((w, i) => ({ w, s: +(seg.start + offset + i * step).toFixed(2), e: +(seg.start + offset + (i + 1) * step).toFixed(2) }));
+    });
+  }
+  return { words, text: (o.text ?? words.map((w) => w.w).join(' ')).trim() };
+}
+
+async function transcribe(req: Request, url: URL, env: Env) {
+  if (!env.AI) throw new HttpError(501, 'no-ai');
+  const audio = new Uint8Array(await req.arrayBuffer());
+  if (audio.length > 3_000_000) throw new HttpError(413, 'clip too long');
+  const secs = wavSeconds(audio);
+  if (secs === null) throw new HttpError(400, 'send a 16-bit WAV');
+  if (secs > 35) throw new HttpError(413, 'clip too long');
+  // Rough daily limit per IP, so the endpoint is not a free transcription service.
+  const ip = req.headers.get('cf-connecting-ip') ?? 'unknown';
+  const key = `tr:${ip}:${new Date().toISOString().slice(0, 10)}`;
+  const used = Number((await env.USERS.get(key, 'json')) ?? 0);
+  if (used + secs > DAILY_SECONDS) throw new HttpError(429, 'daily limit');
+  await env.USERS.put(key, JSON.stringify(Math.ceil(used + secs)));
+  const lang = (url.searchParams.get('lang') ?? '').match(/^[a-z]{2}$/)?.[0];
+  const offset = Math.max(0, Math.min(3600, Number(url.searchParams.get('offset')) || 0));
+  // The audio is only passed to the model, never stored.
+  const out = await env.AI.run(WHISPER, { audio: toBase64(audio), task: 'transcribe', ...(lang ? { language: lang } : {}) });
+  return whisperWords(out, offset);
 }
 
 async function yt(q: string, env: Env) {

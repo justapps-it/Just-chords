@@ -54,6 +54,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun routeFor(i: Intent?): String? =
-        if (i?.action == Intent.ACTION_SEND && i.type?.startsWith("text/") == true) shareRoute(i.getStringExtra(Intent.EXTRA_SUBJECT), i.getStringExtra(Intent.EXTRA_TEXT)) else null
+    private fun routeFor(i: Intent?): String? {
+        if (i?.action != Intent.ACTION_SEND) return null
+        val type = i.type ?: return null
+        if (type.startsWith("text/")) return shareRoute(i.getStringExtra(Intent.EXTRA_SUBJECT), i.getStringExtra(Intent.EXTRA_TEXT))
+        // A video or song file: analyse it.
+        @Suppress("DEPRECATION")
+        val uri = i.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM) ?: return null
+        return if (type.startsWith("video/") || type.startsWith("audio/")) "analyze?file=${it.justapps.justchords.ui.enc(uri.toString())}" else null
+    }
 }

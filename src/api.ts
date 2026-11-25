@@ -106,6 +106,13 @@ export async function fetchSong(url: string): Promise<FetchedSong> {
 }
 
 export const resolveLink = (url: string) => api<LinkInfo>(`/api/link?url=${encodeURIComponent(url)}`);
+/** A ≤ 35 s WAV clip → words with times (Whisper on the server; the audio is not kept). */
+export async function transcribe(wav: Uint8Array, offset: number): Promise<{ w: string; s: number; e: number }[]> {
+  const r = await fetch(`${BASE}/api/transcribe?offset=${offset.toFixed(2)}`, { method: 'POST', headers: { 'content-type': 'audio/wav' }, body: new Blob([wav as BlobPart], { type: 'audio/wav' }) });
+  const data = (await r.json().catch(() => ({}))) as { words?: { w: string; s: number; e: number }[]; error?: string };
+  if (!r.ok) throw new ApiError(r.status, data.error ?? `HTTP ${r.status}`);
+  return data.words ?? [];
+}
 export const findVideos = (q: string) => api<{ items: { id: string; title: string; channel: string }[] }>(`/api/yt?q=${encodeURIComponent(q)}`);
 
 // ------------------------------------------------------------------ account
@@ -118,7 +125,7 @@ export interface User {
 }
 
 /** Version of terms and privacy policy the user accepts at sign-in. */
-export const TERMS_VERSION = '2026-11-23';
+export const TERMS_VERSION = '2026-11-25';
 export const loginWithGoogle = (credential: string) =>
   api<{ token: string; user: User; profile: Profile | null }>('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential, consent: { age14: true, terms: TERMS_VERSION } }) });
 export const deleteAccountApi = () => api<{ deleted: boolean }>('/api/account', { method: 'DELETE' });

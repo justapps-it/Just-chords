@@ -46,6 +46,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import it.justapps.justchords.core.LinkKind
 import it.justapps.justchords.core.Sources
 
 fun enc(s: String): String = Uri.encode(s)
@@ -53,7 +54,10 @@ fun enc(s: String): String = Uri.encode(s)
 /** Where a shared text or link should go: a song link → find its chords, else → import. */
 fun shareRoute(subject: String?, text: String?): String {
     val link = Sources.firstLink(text ?: "")
-    if (link != null && Sources.linkKind(link) != null) return "find?url=${enc(link)}"
+    val kind = link?.let(Sources::linkKind)
+    // TikTok and Instagram videos: listen to them and work out the chords.
+    if (kind == LinkKind.TIKTOK || kind == LinkKind.INSTAGRAM) return "analyze?url=${enc(link)}"
+    if (link != null && kind != null) return "find?url=${enc(link)}"
     return "import?title=${enc(subject ?: "")}&text=${enc(text ?: "")}"
 }
 
@@ -140,6 +144,7 @@ private fun Routes(nav: NavHostController) {
         composable("metronome") { MetronomeScreen() }
         composable("listen") { ListenScreen() }
         composable("chords") { DictionaryScreen() }
+        composable("analyze?url={url}&file={file}") { e -> AnalyzeScreen(e.arg("url"), e.arg("file")) }
         composable("legal/{doc}") { e -> LegalScreen(e.arg("doc") ?: "privacy") }
     }
 }

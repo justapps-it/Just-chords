@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -212,6 +213,7 @@ fun SearchField(value: String, onChange: (String) -> Unit, placeholder: String, 
 data class ToolItem(val key: String, val route: String, val icon: ImageVector)
 
 val TOOLS = listOf(
+    ToolItem("analyze", "analyze", Icons.Rounded.AutoAwesome),
     ToolItem("tuner", "tuner", Icons.Rounded.GraphicEq),
     ToolItem("metronome", "metronome", Icons.Rounded.Timer),
     ToolItem("listen", "listen", Icons.Rounded.Headphones),

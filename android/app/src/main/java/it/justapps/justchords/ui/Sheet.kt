@@ -133,7 +133,8 @@ fun LazyListScope.sheetItems(song: ParsedSong, opts: RenderOptions, scale: Float
 fun SheetPreview(src: String) {
     val st = settings()
     val parsed = ChordPro.parse(src)
-    val opts = RenderOptions(0, st.notation, false, false)
+    val key = parsed.key?.let(it.justapps.justchords.core.Music::parseKey) ?: it.justapps.justchords.core.Music.detectKey(ChordPro.songChords(parsed))
+    val opts = RenderOptions(0, st.notation, it.justapps.justchords.core.Music.prefersFlats(key), false)
     Column(Modifier.fillMaxWidth()) {
         Text(parsed.title, style = MaterialTheme.typography.titleLarge)
         if (parsed.artist.isNotEmpty()) Text(parsed.artist, color = just.muted)

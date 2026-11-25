@@ -249,11 +249,52 @@ export function parseSong(html: string, url: string): FetchedSong | null {
 // ------------------------------------------------------------------ links
 
 export interface LinkInfo {
-  kind: 'youtube' | 'spotify' | 'chords';
+  kind: 'youtube' | 'spotify' | 'chords' | 'tiktok' | 'instagram';
   title?: string;
   artist?: string;
   youtubeId?: string;
+  /** TikTok / Instagram video id, for the embedded player. */
+  videoId?: string;
   url: string;
+}
+
+/** A video to play and analyse: the platform and its id. */
+export interface VideoRef {
+  platform: 'youtube' | 'tiktok' | 'instagram';
+  id: string;
+}
+
+/** TikTok and Instagram video links (short vm.tiktok.com links need resolving first). */
+export function socialVideo(url: string): VideoRef | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\.|^m\./, '');
+    if (host === 'tiktok.com') {
+      const m = u.pathname.match(/\/(?:video|v|photo|embed(?:\/v2)?|player\/v1)\/(\d{8,})/);
+      return m ? { platform: 'tiktok', id: m[1] } : null;
+    }
+    if (host === 'instagram.com') {
+      const m = u.pathname.match(/^\/(?:[\w.]+\/)?(?:reels?|p|tv)\/([\w-]{5,})/);
+      return m ? { platform: 'instagram', id: m[1] } : null;
+    }
+  } catch {
+    /* not a URL */
+  }
+  return null;
+}
+
+export const isShortTiktok = (url: string) => /^https:\/\/(vm|vt)\.tiktok\.com\/\w+/.test(url.trim()) || /^https:\/\/(www\.)?tiktok\.com\/t\/\w+/.test(url.trim());
+
+export function videoRef(url: string): VideoRef | null {
+  const y = youtubeId(url);
+  return y ? { platform: 'youtube', id: y } : socialVideo(url);
+}
+
+/** Official embedded players: the video is played, never downloaded. */
+export function embedUrl(v: VideoRef): string {
+  if (v.platform === 'youtube') return `https://www.youtube-nocookie.com/embed/${v.id}?rel=0&playsinline=1&modestbranding=1`;
+  if (v.platform === 'tiktok') return `https://www.tiktok.com/player/v1/${v.id}?music_info=1&description=1&rel=0`;
+  return `https://www.instagram.com/reel/${v.id}/embed/`;
 }
 
 export function youtubeId(url: string): string | null {
@@ -280,6 +321,9 @@ export function linkKind(url: string): LinkInfo['kind'] | null {
   } catch {
     /* not a URL */
   }
+  const social = socialVideo(url);
+  if (social) return social.platform;
+  if (isShortTiktok(url)) return 'tiktok';
   return null;
 }
 

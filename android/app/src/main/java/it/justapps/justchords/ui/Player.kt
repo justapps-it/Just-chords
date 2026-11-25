@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import it.justapps.justchords.core.Sources
+import it.justapps.justchords.core.VideoRef
 import it.justapps.justchords.data.ApiError
 import it.justapps.justchords.data.Song
 import it.justapps.justchords.data.Video
@@ -118,12 +119,18 @@ fun YouTubePlayer(song: Song, onClose: () -> Unit) {
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun YouTubeFrame(id: String) {
+private fun YouTubeFrame(id: String) = VideoFrame(VideoRef("youtube", id), Modifier.fillMaxWidth().height(220.dp))
+
+/** The platform's official embedded player (YouTube, TikTok, Instagram) in a WebView: played, never downloaded. */
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun VideoFrame(ref: VideoRef, modifier: Modifier) {
+    val id = "${ref.platform}:${ref.id}"
     val html = """
         <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
         <meta name="referrer" content="strict-origin-when-cross-origin">
         <style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head>
-        <body><iframe src="https://www.youtube-nocookie.com/embed/$id?rel=0&playsinline=1&modestbranding=1"
+        <body><iframe src="${Sources.embedUrl(ref)}"
         allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></body></html>
     """.trimIndent()
     var web by remember { mutableStateOf<WebView?>(null) }
@@ -151,6 +158,6 @@ private fun YouTubeFrame(id: String) {
                 it.loadDataWithBaseURL("https://chords.justapps.it/", html, "text/html", "utf-8", null)
             }
         },
-        modifier = Modifier.fillMaxWidth().height(220.dp),
+        modifier = modifier,
     )
 }

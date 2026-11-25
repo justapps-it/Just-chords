@@ -5,6 +5,7 @@ import it.justapps.justchords.core.Levels
 import it.justapps.justchords.core.Profile
 import it.justapps.justchords.core.SearchResult
 import it.justapps.justchords.core.Sources
+import it.justapps.justchords.core.Word
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -46,7 +47,7 @@ data class Rec(
 
 data class GenreName(val id: String, val it: String, val en: String)
 
-data class LinkInfo(val kind: String, val url: String, val title: String?, val artist: String?, val youtubeId: String?)
+data class LinkInfo(val kind: String, val url: String, val title: String?, val artist: String?, val youtubeId: String?, val videoId: String? = null)
 
 data class Video(val id: String, val title: String, val channel: String)
 
@@ -57,7 +58,7 @@ class Api(
 ) {
     companion object {
         /** Version of terms and privacy policy the user accepts at sign-in. */
-        const val TERMS_VERSION = "2026-11-23"
+        const val TERMS_VERSION = "2026-11-25"
         private val FETCH_HOSTS = setOf("www.ultimate-guitar.com", "tabs.ultimate-guitar.com", "ultimate-guitar.com", "www.accordiespartiti.it", "accordiespartiti.it")
 
         fun fetchAllowed(url: String) = runCatching { URI(url) }.getOrNull()?.let { it.scheme == "https" && it.host?.lowercase() in FETCH_HOSTS } == true
@@ -160,7 +161,31 @@ class Api(
 
     suspend fun link(url: String): LinkInfo {
         val o = call("/api/link?url=${enc(url)}")
-        return LinkInfo(o.optString("kind"), o.optString("url", url), o.optString("title").ifEmpty { null }, o.optString("artist").ifEmpty { null }, o.optString("youtubeId").ifEmpty { null })
+        return LinkInfo(
+            o.optString("kind"), o.optString("url", url), o.optString("title").ifEmpty { null }, o.optString("artist").ifEmpty { null },
+            o.optString("youtubeId").ifEmpty { null }, o.optString("videoId").ifEmpty { null },
+        )
+    }
+
+    /** A ≤ 35 s 16-bit WAV clip → words with times (Whisper on the server; the audio is not kept). */
+    suspend fun transcribe(wav: ByteArray, offset: Double): List<Word> = withContext(Dispatchers.IO) {
+        val c = URL("$base/api/transcribe?offset=${"%.2f".format(java.util.Locale.ROOT, offset)}").openConnection() as HttpURLConnection
+        c.requestMethod = "POST"
+        c.connectTimeout = 15000
+        c.readTimeout = 90000
+        c.doOutput = true
+        c.setRequestProperty("Content-Type", "audio/wav")
+        try {
+            c.outputStream.use { it.write(wav) }
+            val code = c.responseCode
+            val text = (if (code < 400) c.inputStream else c.errorStream)?.use { readCapped(it) } ?: ""
+            val o = runCatching { JSONObject(text) }.getOrElse { JSONObject() }
+            if (code !in 200..299) throw ApiError(code, o.optString("error").ifEmpty { "HTTP $code" })
+            val a = o.optJSONArray("words") ?: JSONArray()
+            (0 until a.length()).map { a.getJSONObject(it).let { w -> Word(w.optString("w"), w.optDouble("s"), w.optDouble("e")) } }
+        } finally {
+            c.disconnect()
+        }
     }
 
     suspend fun videos(q: String): List<Video> {

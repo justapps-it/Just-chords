@@ -62,6 +62,7 @@ export function Find() {
           return;
         }
         if (!kind) return setErr(t('linkUnsupported'));
+        if (kind === 'tiktok' || kind === 'instagram') return go(`/analyze?url=${encodeURIComponent(url)}`, true);
         try {
           const li = await resolveLink(url);
           if (!live) return;
@@ -119,6 +120,11 @@ export function Find() {
           <span className="chip">{info.kind === 'spotify' ? 'Spotify' : 'YouTube'}</span>
           <b>{info.title}</b>
           {info.artist && <span className="muted"> · {info.artist}</span>}
+          {info.youtubeId && (
+            <button className="chip primary" onClick={() => go(`/analyze?url=${encodeURIComponent(info.url)}`)}>
+              ✨ {t('analyze')}
+            </button>
+          )}
         </div>
       )}
       {err && <p className="error">{err}</p>}
