@@ -1,5 +1,10 @@
 package it.justapps.justchords.ui
 
+import it.justapps.justchords.data.LinkAudio
+import it.justapps.justchords.core.LinkKind
+import java.io.File
+import kotlinx.coroutines.CancellationException
+import androidx.compose.material.icons.rounded.PlayArrow
 import android.Manifest
 import android.app.Activity
 import android.content.ClipboardManager
@@ -188,6 +193,46 @@ fun AnalyzeScreen(url0: String?, file0: String?) {
         }
     }
 
+    // Straight from the link: the phone downloads only the sound (no screen recording).
+    val direct = Sources.linkKind(url) in setOf(LinkKind.YOUTUBE, LinkKind.TIKTOK, LinkKind.INSTAGRAM)
+    var directFailed by rememberSaveable { mutableStateOf(false) }
+    fun startDirect() {
+        err = ""
+        result = null
+        stage = "analyzeDownloading"
+        progress = 0f
+        scope.launch {
+            val f = File(ctx.cacheDir, "link-audio")
+            try {
+                val la = LinkAudio()
+                val ref = la.resolve(url)
+                if (title.isBlank()) ref.title?.let { title = it }
+                if (artist.isBlank()) ref.artist?.let { artist = it }
+                val referer = when (Sources.linkKind(url)) {
+                    LinkKind.TIKTOK -> "https://www.tiktok.com/"
+                    LinkKind.INSTAGRAM -> "https://www.instagram.com/"
+                    else -> null
+                }
+                la.download(ref, f, referer) { p -> progress = p * 0.5f }
+                stage = "analyzeWorking"
+                val pcm = Decoder.decode(ctx, Uri.fromFile(f), 360) { p -> progress = 0.5f + p * 0.2f }
+                f.delete()
+                analyse(pcm.samples, pcm.sampleRate)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.w("Analyze", "direct link failed", e)
+                stage = null
+                directFailed = true
+                err = t("analyzeDirectFailed")
+            } finally {
+                f.delete()
+            }
+        }
+    }
+    // A link shared to the app starts right away.
+    LaunchedEffect(url0) { if (url0 != null && file0 == null && direct && result == null && stage == null) startDirect() }
+
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
@@ -289,11 +334,25 @@ fun AnalyzeScreen(url0: String?, file0: String?) {
             }
             if (live == null && stage == null && result == null) item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (video != null) {
-                        Button({ withAudio(::startCapture) }, Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) {
-                            Icon(Icons.Rounded.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text(t("analyzePlay"), fontWeight = FontWeight.SemiBold)
+                    if (video != null && direct) {
+                        Button(::startDirect, Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) {
+                            Icon(Icons.Rounded.AutoAwesome, null); Spacer(Modifier.width(8.dp)); Text(t("analyzeDirect"), fontWeight = FontWeight.SemiBold)
                         }
-                        Muted(t("analyzePlayHint"), small = true)
+                        Muted(t("analyzeDirectHint"), small = true)
+                    }
+                    if (video != null) {
+                        // Fallback: hear the video while it plays (MediaProjection playback capture).
+                        val primary = !direct || directFailed
+                        if (primary) {
+                            Button({ withAudio(::startCapture) }, Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) {
+                                Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text(t("analyzePlay"), fontWeight = FontWeight.SemiBold)
+                            }
+                        } else {
+                            OutlinedButton({ withAudio(::startCapture) }, Modifier.fillMaxWidth().height(48.dp)) {
+                                Icon(Icons.Rounded.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(t("analyzePlay"))
+                            }
+                        }
+                        if (primary) Muted(t("analyzePlayHint"), small = true)
                     }
                     OutlinedButton({ withAudio(::startMic) }, Modifier.fillMaxWidth().height(48.dp)) { Icon(Icons.Rounded.Mic, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(t("analyzeMic")) }
                     OutlinedButton({ pickFile.launch(arrayOf("audio/*", "video/*")) }, Modifier.fillMaxWidth().height(48.dp)) { Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(t("analyzeFile")) }
