@@ -249,6 +249,9 @@ export function SongView({ song, stage = false, setlist }: Props) {
           </>
         ) : (
           <>
+            <button className="chip learn" onClick={() => go(`/learnsong/${song.id}`)}>
+              🎓 {t('learn')}
+            </button>
             <button className="chip primary" onClick={enterStage}>
               {t('stage')}
             </button>

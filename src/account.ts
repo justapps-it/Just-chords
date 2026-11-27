@@ -2,7 +2,8 @@
 // without an account; signing in with Google keeps profile and library in
 // sync across devices.
 import { useSyncExternalStore } from 'react';
-import { ApiError, callNative, deleteAccountApi, getToken, inAndroidApp, loginWithGoogle, me, native, putProfile, setToken, syncLibrary, type User } from './api';
+import { ApiError, callNative, deleteAccountApi, getToken, inAndroidApp, loginEmail, loginWithGoogle, me, native, putProfile, registerEmail, setToken, syncLibrary, type Login, type User } from './api';
+import { go } from './router';
 import { emptyProfile, genresOfArtist, learn, type Profile, type Signal } from './lib/recs';
 import { estimateLevel, songDifficulty, type Level } from './lib/difficulty';
 import { exportLibrary, importLibrary, onLibraryChange, type Song } from './store';
@@ -81,8 +82,39 @@ function onAuthError(e: unknown) {
   if (e instanceof ApiError && e.status === 401) logout();
 }
 
-export async function completeLogin(credential: string) {
-  const r = await loginWithGoogle(credential);
+/** Google sign-in. True for a brand-new account. */
+export const completeLogin = async (credential: string) => finishLogin(await loginWithGoogle(credential));
+export const signInEmail = async (email: string, password: string) => finishLogin(await loginEmail(email.trim(), password));
+export const signUpEmail = async (email: string, password: string, name: string) => finishLogin(await registerEmail(email.trim(), password, name.trim()));
+
+/** After signing in: a new account answers the first-run questions (level, playlist). */
+export function afterLogin(created: boolean) {
+  if (created || !state.profile.onboarded) go('/onboarding');
+  else if (location.hash.startsWith('#/welcome')) go('/');
+}
+
+export function markDone(id: string) {
+  const done = state.profile.done ?? [];
+  if (!done.includes(id)) setProfile({ ...state.profile, done: [...done, id].slice(-1000) });
+}
+
+const WKEY = 'justchords-welcomed';
+export const welcomed = () => {
+  try {
+    return localStorage.getItem(WKEY) === '1';
+  } catch {
+    return true;
+  }
+};
+export const setWelcomed = () => {
+  try {
+    localStorage.setItem(WKEY, '1');
+  } catch {
+    /* blocked */
+  }
+};
+
+async function finishLogin(r: Login): Promise<boolean> {
   setToken(r.token);
   write(UKEY, r.user);
   // The newer profile wins; a brand-new account takes the local one.
@@ -92,6 +124,7 @@ export async function completeLogin(credential: string) {
   set({ user: r.user, profile });
   if (profile !== r.profile) await putProfile(profile).catch(() => {});
   await syncNow();
+  return !!r.created;
 }
 
 export function logout() {
@@ -199,7 +232,7 @@ export async function renderGoogleButton(el: HTMLElement, lang: string, onError:
   const g = await loadGis();
   g.accounts.id.initialize({
     client_id: GOOGLE_CLIENT_ID,
-    callback: (r: { credential: string }) => void completeLogin(r.credential).catch(onError),
+    callback: (r: { credential: string }) => void completeLogin(r.credential).then(afterLogin).catch(onError),
     ux_mode: 'popup',
     use_fedcm_for_prompt: true,
   });
@@ -211,5 +244,5 @@ export const canNativeSignIn = () => inAndroidApp() && !!native()?.googleSignIn;
 export async function nativeSignIn() {
   const r = await callNative('googleSignIn', undefined, 120000);
   if (!r.ok) throw new Error(r.body || 'login cancelled');
-  await completeLogin(r.body);
+  afterLogin(await completeLogin(r.body));
 }

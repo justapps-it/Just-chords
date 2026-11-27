@@ -5,7 +5,9 @@ import { Editor } from './components/Editor';
 import { Find } from './components/Find';
 import { Legal } from './components/Legal';
 import { ProfilePage } from './components/ProfilePage';
-import { initAccount, useAccount } from './account';
+import { CoursePage, LearnPage, LessonPage, SongLearn } from './components/Learn';
+import { Onboarding, Welcome } from './components/Onboarding';
+import { initAccount, useAccount, welcomed } from './account';
 import { linkKind } from './lib/sources';
 import { Home } from './components/Home';
 import { Import } from './components/Import';
@@ -35,6 +37,8 @@ export default function App() {
       history.replaceState(null, '', `/#${location.pathname}`);
     }
     // PWA share target / Android share: /share?title=&text=&url=
+    // First visit: sign in or later (not when opened for a link, a legal page or a shared item).
+    if (!welcomed() && !acc.user && location.pathname === '/' && (!location.hash || location.hash === '#/')) go('/welcome', true);
     if (location.pathname === '/share') {
       const q = new URLSearchParams(location.search);
       history.replaceState(null, '', '/');
@@ -66,6 +70,12 @@ export default function App() {
   else if (page === 'find') body = <Find key={location.hash} />;
   else if (page === 'analyze') body = <Analyze key={location.hash} />;
   else if (page === 'profile') body = <ProfilePage />;
+  else if (page === 'learn') body = <LearnPage />;
+  else if (page === 'course' && a) body = <CoursePage id={a} />;
+  else if (page === 'lesson' && a) body = <LessonPage key={location.hash} id={decodeURIComponent(a)} />;
+  else if (page === 'learnsong' && song(a)) body = <SongLearn song={song(a)!} />;
+  else if (page === 'welcome') body = <Welcome />;
+  else if (page === 'onboarding') body = <Onboarding />;
   else if (page === 'privacy' || page === 'terms') body = <Legal doc={page} />;
   else if (page === 'tuner') body = <Tuner />;
   else if (page === 'metronome') body = <MetronomeView />;
@@ -95,6 +105,9 @@ export default function App() {
             <span>Just-Chords</span>
           </a>
           <nav className="top-actions">
+            <a className="nav-link learn-link" href="#/learn">
+              🎓 {t('learn')}
+            </a>
             <a className="nav-link hide-sm" href="https://www.justapps.it">
               JustApps
             </a>

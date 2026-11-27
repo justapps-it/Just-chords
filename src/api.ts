@@ -2,7 +2,7 @@
 // are served from appassets.androidplatform.net, so the API is called on the
 // real domain; song pages are fetched by the phone itself when possible.
 import { onePerSong, parseSong, relevant, searchUrl, sourceOf, parseUgSearch, type FetchedSong, type LinkInfo, type SearchResult } from './lib/sources';
-import type { Profile, Rec } from './lib/recs';
+import type { PlaylistInfo, Profile, Rec } from './lib/recs';
 import type { Level } from './lib/difficulty';
 import type { Library } from './lib/sync';
 
@@ -125,9 +125,14 @@ export interface User {
 }
 
 /** Version of terms and privacy policy the user accepts at sign-in. */
-export const TERMS_VERSION = '2026-11-25';
+export const TERMS_VERSION = '2026-11-27';
 export const loginWithGoogle = (credential: string) =>
-  api<{ token: string; user: User; profile: Profile | null }>('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential, consent: { age14: true, terms: TERMS_VERSION } }) });
+  api<Login>('/api/auth/google', { method: 'POST', body: JSON.stringify({ credential, consent: { age14: true, terms: TERMS_VERSION } }) });
+export type Login = { token: string; user: User; profile: Profile | null; created?: boolean };
+export const registerEmail = (email: string, password: string, name: string) =>
+  api<Login>('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password, name, consent: { age14: true, terms: TERMS_VERSION } }) });
+export const loginEmail = (email: string, password: string) => api<Login>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+export const fetchPlaylist = (url: string) => api<PlaylistInfo>(`/api/playlist?url=${encodeURIComponent(url)}`);
 export const deleteAccountApi = () => api<{ deleted: boolean }>('/api/account', { method: 'DELETE' });
 export const me = () => api<{ user: User; profile: Profile | null }>('/api/me');
 export const putProfile = (p: Profile) => api<{ profile: Profile }>('/api/profile', { method: 'PUT', body: JSON.stringify(p) });

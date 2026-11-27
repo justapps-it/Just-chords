@@ -7,6 +7,7 @@ import { go } from '../router';
 import { useSettings } from '../settings';
 import { useLibrary } from '../store';
 import { LevelBadge } from './LevelBadge';
+import { EmailLogin } from './Onboarding';
 
 export function ProfilePage() {
   const t = useT();
@@ -92,6 +93,7 @@ export function ProfilePage() {
             ) : (
               <div ref={btn} className="gbtn" />
             )}
+            <EmailLogin consent={consent} />
             {err && <p className="error small">{err}</p>}
           </div>
         )}

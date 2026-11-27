@@ -77,6 +77,7 @@ export function Home() {
       <section className="tools">
         {(
           [
+            ['learn', '🎓', '/learn'],
             ['analyze', '✨', '/analyze'],
             ['tuner', '🎸', '/tuner'],
             ['metronome', '⏱', '/metronome'],

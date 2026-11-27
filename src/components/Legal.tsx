@@ -21,9 +21,11 @@ const PRIVACY: Record<'it' | 'en', Doc> = {
         ],
       ],
       [
-        'Con un account Google',
+        'Con un account (Google o email)',
         [
           'Da Google riceviamo identificativo dell’account, nome, indirizzo email e foto del profilo. Non riceviamo la password né altri dati del tuo account Google.',
+          'Con l’accesso via email salviamo email, nome e la password solo in forma cifrata (hash PBKDF2 con sale): nessuno, nemmeno noi, può leggerla. Per proteggere gli account teniamo per un’ora il numero di tentativi di accesso di ogni indirizzo IP.',
+          'Nel profilo salviamo anche il livello, le lezioni di “Impara” completate e la data in cui hai risposto alle domande iniziali.',
           'Salviamo questi dati insieme a profilo dei gusti, libreria, scalette e alla data e versione del consenso che dai all’accesso, per sincronizzarli tra i tuoi dispositivi.',
           'Base giuridica: l’esecuzione del servizio che richiedi creando l’account (art. 6.1.b GDPR).',
         ],
@@ -37,6 +39,7 @@ const PRIVACY: Record<'it' | 'en', Doc> = {
           'TikTok e Instagram: in “Analizza video” il video si vede con il player ufficiale della piattaforma, caricato dal tuo dispositivo; la piattaforma riceve il tuo indirizzo IP e applica la propria informativa. Il nostro server non scarica i video.',
           'Analizza video: accordi, tonalità e tempo si calcolano sul tuo dispositivo. Con “Analizza dal link” l’app Android scarica direttamente sul telefono solo l’audio del video da YouTube, TikTok o Instagram (che ricevono il tuo indirizzo IP), lo analizza e lo cancella subito: non passa dal nostro server. In alternativa, per sentire il video che suona nell’app, usa la cattura dell’audio di Android (ti chiede il permesso di registrare lo schermo): l’audio resta in memoria e non lascia il telefono.',
           'Testo sincronizzato: solo se lo attivi, l’audio analizzato viene inviato a pezzi di 30 secondi al nostro server e trascritto con Whisper su Cloudflare Workers AI. Non viene salvato né usato per altro; il testo trascritto resta solo nella canzone che salvi. Per evitare abusi teniamo per un giorno quanti secondi ha trascritto ogni indirizzo IP.',
+          'Playlist: se incolli il link di una playlist, il nostro server legge quella playlist pubblica da Spotify, YouTube o Deezer per trovare artisti e generi. Teniamo solo la risposta in una cache anonima per al massimo un giorno; artisti e generi finiscono nel tuo profilo dei gusti.',
           'Deezer: per i consigli il nostro server invia solo nomi di artisti e brani. Le copertine sono caricate dal tuo dispositivo dai server di Deezer, che ricevono il tuo indirizzo IP.',
           'Ultimate Guitar e Accordi e Spartiti: le pagine che scegli sono scaricate dal nostro server o, nell’app Android, direttamente dal tuo telefono.',
         ],
@@ -70,9 +73,11 @@ const PRIVACY: Record<'it' | 'en', Doc> = {
         ],
       ],
       [
-        'With a Google account',
+        'With an account (Google or email)',
         [
           'Google gives us your account ID, name, email address and profile picture. We don’t receive your password or other data of your Google account.',
+          'With email sign-in we store your email, name and your password only in hashed form (salted PBKDF2): nobody, not even us, can read it. To protect accounts we keep the number of sign-in attempts per IP address for one hour.',
+          'Your profile also holds your level, the “Learn” lessons you completed and when you answered the first-run questions.',
           'We store them with your taste profile, library, setlists and the date and version of the consent you give at sign-in, to sync them across your devices.',
           'Legal basis: performing the service you ask for by creating the account (art. 6.1.b GDPR).',
         ],
@@ -86,6 +91,7 @@ const PRIVACY: Record<'it' | 'en', Doc> = {
           'TikTok and Instagram: in “Analyse a video” the video plays in the platform’s official player, loaded by your device; the platform receives your IP address and its own policy applies. Our server does not download videos.',
           'Analyse a video: chords, key and tempo are worked out on your device. With “Analyse from the link” the Android app downloads only the video’s audio from YouTube, TikTok or Instagram (which receive your IP address) straight to the phone, analyses it and deletes it right away: it does not go through our server. Alternatively, to hear the video playing inside the app, it uses Android’s audio playback capture (it asks to record the screen): the audio stays in memory and never leaves the phone.',
           'Synced lyrics: only if you turn it on, the analysed audio is sent in 30-second pieces to our server and transcribed with Whisper on Cloudflare Workers AI. It is not stored or used for anything else; the transcribed lyrics only end up in the song you save. To prevent abuse we keep, for one day, how many seconds each IP address has transcribed.',
+          'Playlist: if you paste a playlist link, our server reads that public playlist from Spotify, YouTube or Deezer to find artists and genres. We keep only the answer in an anonymous cache for up to a day; artists and genres go into your taste profile.',
           'Deezer: for recommendations our server sends only artist and song names. Covers load on your device from Deezer’s servers, which receive your IP address.',
           'Ultimate Guitar and Accordi e Spartiti: the pages you pick are downloaded by our server or, in the Android app, by your phone itself.',
         ],
