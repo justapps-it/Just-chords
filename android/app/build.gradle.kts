@@ -18,8 +18,8 @@ android {
         applicationId = "it.justapps.justchords"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "2.3.0"
+        versionCode = 9
+        versionName = "2.3.1"
     }
 
     buildFeatures {
