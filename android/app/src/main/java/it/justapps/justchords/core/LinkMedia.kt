@@ -66,19 +66,37 @@ object LinkMedia {
     private val videoUrl = Regex("""\\*"video_url\\*"\s*:\s*\\*"((?:[^"\\]|\\.)+?)\\*"""")
     private val owner = Regex("""\\*"username\\*"\s*:\s*\\*"([A-Za-z0-9._]+)\\*"""")
 
-    /** Instagram embed page (…/embed/captioned/) → the video file, when the page carries it. */
+    private val ogVideo = Regex("""<meta[^>]+property="og:video(?::secure_url)?"[^>]+content="([^"]+)"""")
+    private val videoVersions = Regex("""\\*"video_versions\\*"\s*:\s*\[\s*\{[^\]]*?\\*"url\\*"\s*:\s*\\*"((?:[^"\\]|\\.)+?)\\*"""")
+
+    /** Instagram embed or post page → the video file, when the page carries it (video_url, video_versions or og:video). */
     fun instagram(html: String): MediaRef? {
-        val raw = videoUrl.find(html)?.groupValues?.get(1) ?: return null
+        val raw = videoUrl.find(html)?.groupValues?.get(1)
+            ?: videoVersions.find(html)?.groupValues?.get(1)
+            ?: ogVideo.find(html)?.groupValues?.get(1)
+            ?: return null
         val url = unescapeJson(raw)
         if (!url.startsWith("https://")) return null
         return MediaRef(url, title = null, artist = owner.find(html)?.groupValues?.get(1), seconds = null)
     }
 
+    /** Instagram post URL → its plain page. */
+    fun instagramPage(url: String): String? =
+        Regex("""instagram\.com/(?:[A-Za-z0-9._]+/)?(p|reels?|tv)/([A-Za-z0-9_-]+)""").find(url)?.let { m ->
+            val kind = if (m.groupValues[1].startsWith("reel")) "reel" else m.groupValues[1]
+            "https://www.instagram.com/$kind/${m.groupValues[2]}/"
+        }
+
+    /** The numeric id of a TikTok video, from its URL or page. */
+    fun tiktokId(url: String, html: String = ""): String? =
+        Regex("""/(?:video|v|photo)/(\d{8,})""").find(url)?.groupValues?.get(1)
+            ?: Regex("""tiktok\.com/@[^/"]*/(?:video|photo)/(\d{8,})""").find(html)?.groupValues?.get(1)
+
     /** Undoes one or more levels of JSON string escaping (the embed nests JSON in JSON). */
     fun unescapeJson(s: String): String {
         var cur = s
         repeat(3) {
-            if (!cur.contains('\\')) return cur
+            if (!cur.contains('\\')) return cur.replace("&amp;", "&")
             val sb = StringBuilder()
             var i = 0
             while (i < cur.length) {

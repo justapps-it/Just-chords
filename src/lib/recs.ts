@@ -14,6 +14,10 @@ export interface Profile {
   genreBoost: Record<string, number>;
   liked: string[];
   disliked: string[];
+  /** Learn: lessons done (ids). */
+  done?: string[];
+  /** When the first-run questions (level test, playlist) were answered or skipped. */
+  onboarded?: number;
   updated: number;
 }
 
@@ -219,4 +223,25 @@ export function plan(p: Profile, seed: number) {
 export function genresOfArtist(artist: string): string[] {
   const a = artist.toLowerCase();
   return GENRES.filter((g) => g.seeds.some((s) => s.toLowerCase() === a)).map((g) => g.id);
+}
+
+export interface PlaylistInfo {
+  name: string;
+  source: 'spotify' | 'youtube' | 'deezer';
+  tracks: { title: string; artist: string }[];
+  artists: { name: string; n: number }[];
+  genres: string[];
+}
+
+/** A playlist I like → artists and genres in the taste profile. */
+export function applyPlaylist(p: Profile, pl: PlaylistInfo): Profile {
+  const artists = { ...p.artists };
+  for (const a of pl.artists.slice(0, 30)) {
+    const k = a.name.trim().toLowerCase();
+    if (k) artists[k] = Math.min(25, (artists[k] ?? 0) + 2 + Math.min(a.n, 5));
+  }
+  const genreBoost = { ...p.genreBoost };
+  for (const g of pl.genres) genreBoost[g] = Math.min(3, (genreBoost[g] ?? 0) + 1);
+  const genres = [...new Set([...p.genres, ...pl.genres.slice(0, 4)])];
+  return { ...p, artists, genreBoost, genres };
 }

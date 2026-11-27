@@ -402,3 +402,52 @@ export function onePerSong(list: SearchResult[]): SearchResult[] {
     .sort((a, b) => a[1].order - b[1].order)
     .map(([, g]) => ({ ...g.best, votes: g.votes || g.best.votes }));
 }
+
+// ------------------------------------------------------------------ playlists
+
+export function playlistRef(url: string): { source: 'spotify' | 'youtube' | 'deezer'; id: string } | null {
+  const sp = url.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(?:embed\/)?playlist\/([A-Za-z0-9]{10,40})/);
+  if (sp) return { source: 'spotify', id: sp[1] };
+  const yt = url.match(/(?:youtube\.com|youtu\.be)\/.*[?&]list=([A-Za-z0-9_-]{10,64})/);
+  if (yt) return { source: 'youtube', id: yt[1] };
+  const dz = url.match(/deezer\.com\/(?:[a-z]{2}\/)?playlist\/(\d{3,20})/);
+  if (dz) return { source: 'deezer', id: dz[1] };
+  return null;
+}
+
+/** Spotify's embed page (open.spotify.com/embed/playlist/ID): name and tracks from its __NEXT_DATA__. */
+export function parseSpotifyPlaylist(html: string): { name: string; tracks: { title: string; artist: string }[] } | null {
+  const m = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!m) return null;
+  try {
+    const d = JSON.parse(m[1]);
+    const e = d?.props?.pageProps?.state?.data?.entity;
+    const list = (e?.trackList ?? []) as { title?: string; subtitle?: string }[];
+    const tracks = list
+      .filter((t) => t.title)
+      .map((t) => ({ title: String(t.title), artist: String(t.subtitle ?? '').split(/,\s*/)[0].replace(/\u00a0/g, ' ').trim() }));
+    return { name: String(e?.name ?? e?.title ?? ''), tracks };
+  } catch {
+    return null;
+  }
+}
+
+/** Artists by how many tracks they have. */
+export function playlistArtists(tracks: { artist: string }[]): { name: string; n: number }[] {
+  const m = new Map<string, { name: string; n: number }>();
+  for (const t of tracks) {
+    const name = t.artist.trim();
+    if (!name) continue;
+    const k = name.toLowerCase();
+    const e = m.get(k) ?? { name, n: 0 };
+    e.n++;
+    m.set(k, e);
+  }
+  return [...m.values()].sort((a, b) => b.n - a.n);
+}
+
+/** Deezer genre names → our genres. */
+export const DEEZER_GENRES: Record<string, string> = {
+  Pop: 'pop', Rock: 'rock', Alternative: 'indie', Indie: 'indie', 'Indie Rock': 'indie', 'Indie Pop': 'indie', Folk: 'folk', Blues: 'blues', Metal: 'metal',
+  'Hard Rock': 'classicrock', Country: 'country', 'Soul & Funk': 'soul', 'R&B': 'soul', Soul: 'soul', Funk: 'soul', Reggae: 'reggae', Jazz: 'jazz', 'Musica italiana': 'itpop', Punk: 'punk',
+};

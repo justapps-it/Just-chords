@@ -5,18 +5,21 @@
 //   GET  /api/yt?q=            YouTube video for a song (needs YOUTUBE_API_KEY)
 //   POST /api/recs             recommendations for a taste profile
 //   POST /api/auth/google      Google ID token → session token
+//   POST /api/auth/register    email + password → new account
+//   POST /api/auth/login       email + password → session token
+//   GET  /api/playlist?url=    Spotify / YouTube / Deezer playlist → artists and genres
 //   GET  /api/me               account, profile
 //   PUT  /api/profile          save profile
 //   POST /api/sync             merge the library with the account copy
 //   POST /api/transcribe       a WAV clip (≤ 35 s) → words with timestamps (Whisper, Workers AI)
-import { aesApiSearchUrl, isShortTiktok, onePerSong, socialVideo, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
+import { DEEZER_GENRES, parseSpotifyPlaylist, playlistArtists, playlistRef, aesApiSearchUrl, isShortTiktok, onePerSong, socialVideo, relevant, parseAesApi, parseAesSearch, parseSong, parseSpotify, parseUgSearch, searchUrl, sourceOf, splitVideoTitle, youtubeId, type SearchResult } from '../lib/sources';
 import { CURATED, GENRES, emptyProfile, plan, rank, type Candidate, type Profile } from '../lib/recs';
 import { mergeLibrary, type Library } from '../lib/sync';
 import type { Level } from '../lib/difficulty';
 
 interface KV {
   get(key: string, type: 'json'): Promise<any>;
-  put(key: string, value: string): Promise<void>;
+  put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
   delete(key: string): Promise<void>;
 }
 interface Env {
@@ -61,6 +64,7 @@ export default {
         '/api/song': (p) => song(p.get('url') ?? ''),
         '/api/link': (p) => link(p.get('url') ?? ''),
         '/api/yt': (p) => yt(p.get('q') ?? '', env),
+        '/api/playlist': (p) => playlist(p.get('url') ?? '', env),
       };
       const handler = cacheable[url.pathname];
       if (handler && req.method === 'GET') {
@@ -75,23 +79,46 @@ export default {
       if (url.pathname === '/api/transcribe' && req.method === 'POST') return json(await transcribe(req, url, env));
       if (url.pathname === '/api/recs' && req.method === 'POST') return json(await recommend(await req.json()));
       if (url.pathname === '/api/auth/google' && req.method === 'POST') {
-        const { credential, consent } = (await req.json()) as { credential?: string; consent?: { age14?: boolean; terms?: string } };
-        // Accounts are for people aged 14 or over who accepted terms and privacy policy.
-        if (consent?.age14 !== true || typeof consent.terms !== 'string') throw new HttpError(400, 'consent required');
+        const { credential, consent } = (await req.json()) as { credential?: string; consent?: Consent };
+        checkConsent(consent);
         const user = await verifyGoogle(String(credential ?? ''), env.GOOGLE_CLIENT_ID);
-        const token = await sign({ ...user, exp: Date.now() + 180 * 864e5 }, env);
-        const stored = (await env.USERS.get(`p:${user.sub}`, 'json')) as Profile | null;
-        const prev = (await env.USERS.get(`u:${user.sub}`, 'json')) as { consent?: unknown; created?: number } | null;
-        await env.USERS.put(
-          `u:${user.sub}`,
-          JSON.stringify({ ...user, created: prev?.created ?? Date.now(), last: Date.now(), consent: { age14: true, terms: consent.terms.slice(0, 20), at: Date.now() } }),
-        );
-        return json({ token, user, profile: stored });
+        return json(await startSession(user, consent!, env));
+      }
+      if (url.pathname === '/api/auth/register' && req.method === 'POST') {
+        await limit(req, env, 'reg', 10);
+        const b = (await req.json()) as { email?: string; password?: string; name?: string; consent?: Consent };
+        checkConsent(b.consent);
+        const email = normEmail(b.email);
+        const password = String(b.password ?? '');
+        if (password.length < 8 || password.length > 200) throw new HttpError(400, 'weak password');
+        if (await env.USERS.get(`e:${email}`, 'json')) throw new HttpError(409, 'email taken');
+        const sub = `em_${crypto.randomUUID()}`;
+        const salt = b64u.enc(crypto.getRandomValues(new Uint8Array(16)));
+        await env.USERS.put(`e:${email}`, JSON.stringify({ sub, salt, hash: await pbkdf2(password, salt), iter: PBKDF2_ITER, created: Date.now() }));
+        const name = String(b.name ?? '').trim().slice(0, 60) || email.split('@')[0];
+        return json(await startSession({ sub, email, name }, b.consent!, env));
+      }
+      if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+        await limit(req, env, 'login', 20);
+        const b = (await req.json()) as { email?: string; password?: string };
+        const email = normEmail(b.email);
+        const rec = (await env.USERS.get(`e:${email}`, 'json')) as { sub: string; salt: string; hash: string; iter?: number } | null;
+        // Same work and the same answer whether the email exists or not.
+        const hash = await pbkdf2(String(b.password ?? ''), rec?.salt ?? 'x', rec?.iter);
+        if (!rec || !timingSafeEqual(hash, rec.hash)) throw new HttpError(401, 'wrong email or password');
+        const u = (await env.USERS.get(`u:${rec.sub}`, 'json')) as (User & { consent?: Consent }) | null;
+        if (!u) throw new HttpError(401, 'wrong email or password');
+        return json(await startSession({ sub: rec.sub, email, name: u.name }, u.consent as Consent, env));
       }
       const me = await session(req, env);
       if (url.pathname === '/api/account' && req.method === 'DELETE') {
         // Right to erasure: everything stored for this account, at once.
-        await Promise.all([env.USERS.delete(`u:${me.sub}`), env.USERS.delete(`p:${me.sub}`), env.USERS.delete(`l:${me.sub}`)]);
+        await Promise.all([
+          env.USERS.delete(`u:${me.sub}`),
+          env.USERS.delete(`p:${me.sub}`),
+          env.USERS.delete(`l:${me.sub}`),
+          me.sub.startsWith('em_') ? env.USERS.delete(`e:${me.email}`) : Promise.resolve(),
+        ]);
         return json({ deleted: true });
       }
       if (url.pathname === '/api/me' && req.method === 'GET') return json({ user: me, profile: await env.USERS.get(`p:${me.sub}`, 'json') });
@@ -381,6 +408,8 @@ function clampProfile(p: Partial<Profile>): Profile {
   const strs = (a: unknown, n: number) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string').slice(-n) : []);
   return {
     genres: strs(p.genres, 20).filter((g) => GENRES.some((x) => x.id === g)),
+    done: strs(p.done, 1000).filter((x) => x.length <= 80),
+    onboarded: typeof p.onboarded === 'number' ? p.onboarded : undefined,
     level: ([0, 1, 2, 3] as const).includes(p.level as 0) ? (p.level as Profile['level']) : e.level,
     artists: nums(p.artists),
     genreBoost: nums(p.genreBoost),
@@ -446,5 +475,106 @@ async function session(req: Request, env: Env): Promise<User> {
   if (!ok) throw new HttpError(401, 'bad session');
   const d = JSON.parse(new TextDecoder().decode(b64u.dec(body))) as User & { exp: number };
   if (d.exp < Date.now()) throw new HttpError(401, 'session expired');
+  // A deleted account signs out everywhere.
+  if (!(await env.USERS.get(`u:${d.sub}`, 'json'))) throw new HttpError(401, 'account deleted');
   return { sub: d.sub, email: d.email, name: d.name, picture: d.picture };
+}
+
+type Consent = { age14?: boolean; terms?: string };
+
+// Accounts are for people aged 14 or over who accepted terms and privacy policy.
+function checkConsent(c: Consent | undefined) {
+  if (c?.age14 !== true || typeof c.terms !== 'string') throw new HttpError(400, 'consent required');
+}
+
+/** Stores the account (first time: created) and signs a session. */
+async function startSession(user: User, consent: Consent, env: Env) {
+  const token = await sign({ ...user, exp: Date.now() + 180 * 864e5 }, env);
+  const stored = (await env.USERS.get(`p:${user.sub}`, 'json')) as Profile | null;
+  const prev = (await env.USERS.get(`u:${user.sub}`, 'json')) as { created?: number } | null;
+  await env.USERS.put(
+    `u:${user.sub}`,
+    JSON.stringify({ ...user, created: prev?.created ?? Date.now(), last: Date.now(), consent: { age14: true, terms: String(consent.terms ?? '').slice(0, 20), at: Date.now() } }),
+  );
+  return { token, user, profile: stored, created: !prev };
+}
+
+const normEmail = (e: unknown) => {
+  const s = String(e ?? '').trim().toLowerCase();
+  if (s.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new HttpError(400, 'bad email');
+  return s;
+};
+
+// Workers allow PBKDF2 up to 100 000 iterations.
+const PBKDF2_ITER = 100_000;
+async function pbkdf2(password: string, salt: string, iter = PBKDF2_ITER) {
+  const key = await crypto.subtle.importKey('raw', utf8.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: utf8.encode(salt), iterations: iter }, key, 256);
+  return b64u.enc(bits);
+}
+function timingSafeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+/** At most n attempts per IP per hour. */
+async function limit(req: Request, env: Env, what: string, n: number) {
+  const ip = req.headers.get('cf-connecting-ip') ?? 'unknown';
+  const key = `rl:${what}:${ip}:${new Date().toISOString().slice(0, 13)}`;
+  const count = ((await env.USERS.get(key, 'json')) as number | null) ?? 0;
+  if (count >= n) throw new HttpError(429, 'too many attempts, try again later');
+  await env.USERS.put(key, JSON.stringify(count + 1), { expirationTtl: 3700 });
+}
+
+// ------------------------------------------------------------------ playlists
+
+async function playlist(url: string, env: Env) {
+  const ref = playlistRef(url);
+  if (!ref) throw new HttpError(400, 'unsupported playlist link');
+  let name = '';
+  let tracks: { title: string; artist: string }[] = [];
+  if (ref.source === 'spotify') {
+    const r = await get(`https://open.spotify.com/embed/playlist/${ref.id}`);
+    const p = r.ok ? parseSpotifyPlaylist(await r.text()) : null;
+    if (!p) throw new HttpError(502, `spotify ${r.status}`);
+    ({ name, tracks } = p);
+  } else if (ref.source === 'deezer') {
+    const r = await get(`https://api.deezer.com/playlist/${ref.id}`, 'application/json');
+    const d = (await r.json()) as { title?: string; tracks?: { data?: { title: string; artist: { name: string } }[] }; error?: unknown };
+    if (!r.ok || d.error) throw new HttpError(502, 'deezer');
+    name = d.title ?? '';
+    tracks = (d.tracks?.data ?? []).map((t) => ({ title: t.title, artist: t.artist.name }));
+  } else {
+    if (!env.YOUTUBE_API_KEY) throw new HttpError(501, 'no-key');
+    const headers = { referer: 'https://chords.justapps.it/' };
+    const meta = (await (await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${ref.id}&key=${env.YOUTUBE_API_KEY}`, { headers })).json()) as { items?: { snippet: { title: string } }[] };
+    name = meta.items?.[0]?.snippet.title ?? '';
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${ref.id}&key=${env.YOUTUBE_API_KEY}`, { headers });
+    if (!r.ok) throw new HttpError(r.status === 404 ? 404 : 502, `youtube ${r.status}`);
+    const d = (await r.json()) as { items?: { snippet: { title: string; videoOwnerChannelTitle?: string } }[] };
+    tracks = (d.items ?? [])
+      .filter((i) => i.snippet.title !== 'Private video' && i.snippet.title !== 'Deleted video')
+      .map((i) => splitVideoTitle(i.snippet.title, (i.snippet.videoOwnerChannelTitle ?? '').replace(/ - Topic$/, '').replace(/VEVO$/i, '')));
+  }
+  tracks = tracks.filter((t) => t.artist).slice(0, 200);
+  const artists = playlistArtists(tracks);
+  // Genres: our seed artists first, then Deezer's album genre of the top artists.
+  const votes = new Map<string, number>();
+  const vote = (g: string, w: number) => votes.set(g, (votes.get(g) ?? 0) + w);
+  for (const a of artists) for (const g of GENRES) if (g.seeds.some((x) => x.toLowerCase() === a.name.toLowerCase())) vote(g.id, a.n * 2);
+  const { deezer, artistId, topTracks } = deezerClient(30);
+  await Promise.all(
+    artists.slice(0, 8).map(async (a) => {
+      const id = await artistId(a.name);
+      if (!id) return;
+      const album = (await topTracks(id, 1))[0] as (DzTrack & { album?: { id?: number } }) | undefined;
+      if (!album?.album?.id) return;
+      const al = await deezer<{ genres?: { data?: { name: string }[] } }>(`/album/${album.album.id}`);
+      for (const g of al?.genres?.data ?? []) if (DEEZER_GENRES[g.name]) vote(DEEZER_GENRES[g.name], a.n);
+    }),
+  );
+  const genres = [...votes.entries()].sort((x, y) => y[1] - x[1]).map(([g]) => g).slice(0, 4);
+  return { data: { name, source: ref.source, tracks: tracks.slice(0, 100), artists: artists.slice(0, 40), genres }, ttl: 86400 };
 }

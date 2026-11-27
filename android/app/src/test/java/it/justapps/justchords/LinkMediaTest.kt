@@ -53,6 +53,20 @@ class LinkMediaTest {
         assertNull(LinkMedia.instagram("<html>photo only</html>"))
     }
 
+    @Test fun instagramPostPageFallbacks() {
+        val og = """<meta property="og:video" content="https://scontent.cdninstagram.com/o1/v/clip.mp4?a=1&amp;b=2" />"""
+        assertEquals("https://scontent.cdninstagram.com/o1/v/clip.mp4?a=1&b=2", LinkMedia.instagram(og)!!.url)
+        val vv = """{"video_versions":[{"type":101,"url":"https:\\/\\/scontent.cdninstagram.com\\/v.mp4?x=1","width":720}]}"""
+        assertEquals("https://scontent.cdninstagram.com/v.mp4?x=1", LinkMedia.instagram(vv)!!.url)
+        assertEquals("https://www.instagram.com/reel/AbC/", LinkMedia.instagramPage("https://www.instagram.com/reels/AbC/?igsh=x"))
+    }
+
+    @Test fun tiktokIds() {
+        assertEquals("7312345678901234567", LinkMedia.tiktokId("https://www.tiktok.com/@a.b/video/7312345678901234567?_r=1"))
+        assertEquals("7312345678901234567", LinkMedia.tiktokId("https://www.tiktok.com/", """{"canonical":"https://www.tiktok.com/@x/video/7312345678901234567"}"""))
+        assertNull(LinkMedia.tiktokId("https://www.tiktok.com/?_r=1"))
+    }
+
     @Test fun instagramEmbedAddress() {
         assertEquals("https://www.instagram.com/reel/AbC_12-x/embed/captioned/", LinkMedia.instagramEmbed("https://www.instagram.com/reels/AbC_12-x/?igsh=1"))
         assertEquals("https://www.instagram.com/p/AbC/embed/captioned/", LinkMedia.instagramEmbed("https://instagram.com/someone/p/AbC/"))

@@ -36,6 +36,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.sp
@@ -61,7 +69,7 @@ fun shareRoute(subject: String?, text: String?): String {
     return "import?title=${enc(subject ?: "")}&text=${enc(text ?: "")}"
 }
 
-private data class Tab(val route: String, val label: String, val icon: ImageVector, val selected: ImageVector)
+private data class Tab(val route: String, val label: String, val icon: ImageVector, val selected: ImageVector, val picture: String? = null)
 
 private val TAB_ROUTES = setOf("home", "find", "tools", "profile")
 
@@ -71,11 +79,12 @@ fun JustChordsRoot(startRoute: String?, onRouteConsumed: () -> Unit) {
     val t = rememberT()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route?.substringBefore('?')?.substringBefore('/')
+    val picture = app().account.state.collectAsState().value.user?.picture
     val tabs = listOf(
         Tab("home", t("library"), Icons.Outlined.Home, Icons.Rounded.Home),
         Tab("find", if (settings().lang == "it") "Cerca" else "Search", Icons.Outlined.Search, Icons.Rounded.Search),
         Tab("tools", t("tools"), Icons.Outlined.Tune, Icons.Rounded.Tune),
-        Tab("profile", t("profile"), Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle),
+        Tab("profile", t("profile"), Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle, picture),
     )
     LaunchedEffect(startRoute) {
         if (startRoute != null) {
@@ -100,7 +109,16 @@ fun JustChordsRoot(startRoute: String?, onRouteConsumed: () -> Unit) {
                                         restoreState = true
                                     }
                                 },
-                                icon = { Icon(if (on) tab.selected else tab.icon, null) },
+                                icon = {
+                                    // Signed in: my photo instead of the generic profile icon.
+                                    if (tab.picture != null) {
+                                        AsyncImage(
+                                            tab.picture, null,
+                                            Modifier.size(26.dp).clip(CircleShape).then(if (on) Modifier.border(2.dp, JustOrange, CircleShape) else Modifier),
+                                            contentScale = ContentScale.Crop,
+                                        )
+                                    } else Icon(if (on) tab.selected else tab.icon, null)
+                                },
                                 label = { Text(tab.label, fontSize = 12.sp, maxLines = 1) },
                                 colors = NavigationBarItemDefaults.colors(indicatorColor = just.orangeSoft, selectedIconColor = JustOrange, selectedTextColor = JustOrange),
                             )

@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "courses": [
+    {
+      "id": "first-chords",
+      "level": 1,
+      "title": { "it": "I primi accordi", "en": "Your first chords" },
+      "desc": { "it": "Mi minore, La minore, Do, Sol e Re: gli accordi di migliaia di canzoni.", "en": "E minor, A minor, C, G and D: the chords of thousands of songs." },
+      "lessons": [
+        { "id": "c-em", "type": "chord", "chord": "Em", "title": { "it": "Mi minore", "en": "E minor" }, "tip": { "it": "Due dita sulla seconda corda e via: suona tutte e sei le corde. Premi con la punta delle dita, vicino al tasto.", "en": "Two fingers on the second fret and strum all six strings. Press with your fingertips, close to the fret." } },
+        { "id": "c-am", "type": "chord", "chord": "Am", "title": { "it": "La minore", "en": "A minor" }, "tip": { "it": "Stessa forma del Mi maggiore spostata di una corda. Non suonare la sesta corda.", "en": "The E major shape moved over one string. Don’t play the sixth string." } },
+        { "id": "s-em-am", "type": "switch", "chords": ["Em", "Am"], "beats": 4, "tempo": [50, 80], "title": { "it": "Cambio Mi minore ↔ La minore", "en": "Switch E minor ↔ A minor" }, "tip": { "it": "Muovi le dita insieme, come un blocco. Prepara il cambio sull’ultimo battito.", "en": "Move your fingers together as one block. Get ready on the last beat." } },
+        { "id": "c-c", "type": "chord", "chord": "C", "title": { "it": "Do", "en": "C" }, "tip": { "it": "Anulare sulla quinta corda al terzo tasto. Inarca le dita perché il Mi cantino suoni.", "en": "Ring finger on the fifth string, third fret. Arch your fingers so the high E rings." } },
+        { "id": "c-g", "type": "chord", "chord": "G", "title": { "it": "Sol", "en": "G" }, "tip": { "it": "Il primo accordo a sei corde: medio sulla sesta, anulare sulla prima.", "en": "Your first six-string chord: middle finger on the sixth string, ring finger on the first." } },
+        { "id": "s-c-g", "type": "switch", "chords": ["C", "G"], "beats": 4, "tempo": [50, 80], "title": { "it": "Cambio Do ↔ Sol", "en": "Switch C ↔ G" }, "tip": { "it": "Guarda dove deve andare il dito più lontano e spostalo per primo.", "en": "Look at the finger that travels furthest and move it first." } },
+        { "id": "c-d", "type": "chord", "chord": "D", "title": { "it": "Re", "en": "D" }, "tip": { "it": "Un triangolo sulle tre corde acute. Suona solo dalla quarta corda in giù.", "en": "A triangle on the three high strings. Strum from the fourth string down only." } },
+        { "id": "s-g-d", "type": "switch", "chords": ["G", "D"], "beats": 4, "tempo": [50, 80], "title": { "it": "Cambio Sol ↔ Re", "en": "Switch G ↔ D" }, "tip": { "it": "L’anulare scivola sulla seconda corda: non staccarlo troppo.", "en": "Your ring finger slides to the second string: keep it close." } },
+        { "id": "p-g-d-em-c", "type": "progression", "chords": ["G", "D", "Em", "C"], "beats": 4, "strum": "D-D-D-D-", "tempo": [55, 90], "title": { "it": "Il giro più famoso: Sol Re Mim Do", "en": "The most famous progression: G D Em C" }, "tip": { "it": "Quattro accordi, quattro battiti ciascuno. È il giro di centinaia di canzoni pop.", "en": "Four chords, four beats each. It’s the progression of hundreds of pop songs." } }
+      ]
+    },
+    {
+      "id": "first-rhythm",
+      "level": 1,
+      "title": { "it": "Il primo ritmo", "en": "Your first rhythm" },
+      "desc": { "it": "La mano destra: battiti in giù, poi in su, poi il ritmo pop.", "en": "Your strumming hand: downstrokes, then upstrokes, then the pop rhythm." },
+      "lessons": [
+        { "id": "r-down", "type": "strum", "chords": ["G"], "pattern": "D-D-D-D-", "tempo": [60, 100], "title": { "it": "Tutto in giù", "en": "All downstrokes" }, "tip": { "it": "Un colpo in giù su ogni battito. Il polso morbido, il braccio segue.", "en": "One downstroke on every beat. Keep the wrist loose and let the arm follow." } },
+        { "id": "r-du", "type": "strum", "chords": ["C"], "pattern": "DUDUDUDU", "tempo": [50, 90], "title": { "it": "Giù e su", "en": "Down and up" }, "tip": { "it": "La mano non si ferma mai: in giù sul battito, in su a metà.", "en": "Your hand never stops: down on the beat, up in between." } },
+        { "id": "r-pop", "type": "strum", "chords": ["G", "C"], "pattern": "D-DU-UDU", "tempo": [50, 90], "title": { "it": "Il ritmo pop", "en": "The pop rhythm" }, "tip": { "it": "Giù, giù-su, su-giù-su. Dove c’è il trattino la mano passa senza toccare le corde.", "en": "Down, down-up, up-down-up. On the dash the hand moves without touching the strings." } },
+        { "id": "p-pop-song", "type": "progression", "chords": ["C", "G", "Am", "Em"], "beats": 4, "strum": "D-DU-UDU", "tempo": [55, 85], "title": { "it": "Ritmo pop su quattro accordi", "en": "Pop rhythm over four chords" }, "tip": { "it": "Se il cambio non arriva in tempo, salta l’ultimo colpo in su: nessuno se ne accorge.", "en": "If the change is late, skip the last upstroke: nobody will notice." } }
+      ]
+    },
+    {
+      "id": "first-melodies",
+      "level": 1,
+      "title": { "it": "Le prime melodie", "en": "Your first melodies" },
+      "desc": { "it": "Note singole sulle corde acute: suoni le melodie che conosci.", "en": "Single notes on the high strings: play tunes you already know." },
+      "lessons": [
+        { "id": "m-frere", "type": "riff", "beats": 4, "notes": "2.1 2.3 1.0 2.1 2.1 2.3 1.0 2.1 1.0 1.1 1.3:2 1.0 1.1 1.3:2 1.3:0.5 1.5:0.5 1.3:0.5 1.1:0.5 1.0 2.1 1.3:0.5 1.5:0.5 1.3:0.5 1.1:0.5 1.0 2.1 2.1 3.0 2.1:2 2.1 3.0 2.1:2", "tempo": [60, 100], "title": { "it": "Fra Martino", "en": "Frère Jacques" }, "tip": { "it": "Il numero sulla riga è il tasto, la riga è la corda (in alto la più sottile). 0 = corda a vuoto.", "en": "The number on a line is the fret, the line is the string (thinnest at the top). 0 = open string." } },
+        { "id": "m-ode", "type": "riff", "beats": 4, "notes": "1.0 1.0 1.1 1.3 1.3 1.1 1.0 2.3 2.1 2.1 2.3 1.0 1.0:1.5 2.3:0.5 2.3:2 1.0 1.0 1.1 1.3 1.3 1.1 1.0 2.3 2.1 2.1 2.3 1.0 2.3:1.5 2.1:0.5 2.1:2", "tempo": [60, 100], "title": { "it": "Inno alla gioia", "en": "Ode to Joy" }, "tip": { "it": "Usa un dito per tasto: indice al primo, medio al secondo, anulare al terzo.", "en": "One finger per fret: index on the first, middle on the second, ring on the third." } },
+        { "id": "m-twinkle", "type": "riff", "beats": 4, "notes": "2.1 2.1 1.3 1.3 1.5 1.5 1.3:2 1.1 1.1 1.0 1.0 2.3 2.3 2.1:2 1.3 1.3 1.1 1.1 1.0 1.0 2.3:2 1.3 1.3 1.1 1.1 1.0 1.0 2.3:2", "tempo": [60, 110], "title": { "it": "Brilla brilla la stellina", "en": "Twinkle Twinkle Little Star" }, "tip": { "it": "Il La al quinto tasto si prende col mignolo, o spostando la mano.", "en": "Reach the A on the fifth fret with your little finger, or move your hand up." } },
+        { "id": "m-bass", "type": "riff", "beats": 4, "notes": "6.0 6.0 6.3 6.0 5.0 5.2 6.3 6.0 6.0 6.0 6.3 6.0 5.2 5.0 6.3:2", "tempo": [70, 120], "title": { "it": "Il primo riff sulle corde basse", "en": "Your first riff on the low strings" }, "tip": { "it": "Pennata in giù su ogni nota. Appoggia il palmo sulle corde vicino al ponte per un suono rock.", "en": "Downpick every note. Rest your palm on the strings by the bridge for a rock sound." } }
+      ]
+    },
+    {
+      "id": "barre",
+      "level": 2,
+      "title": { "it": "Il barré", "en": "Barre chords" },
+      "desc": { "it": "Fa e Si minore: lo scoglio di ogni chitarrista, un passo alla volta.", "en": "F and B minor: every guitarist’s hurdle, one step at a time." },
+      "lessons": [
+        { "id": "c-fmaj7", "type": "chord", "chord": "Fmaj7", "title": { "it": "Il Fa facile (Fa settima maggiore)", "en": "The easy F (Fmaj7)" }, "tip": { "it": "Prima del barré: il Fa senza la prima corda premuta. Suona solo le quattro corde acute.", "en": "Before the barre: F without pressing the first string. Strum only the four high strings." } },
+        { "id": "c-f", "type": "chord", "chord": "F", "title": { "it": "Fa con il barré", "en": "Full F barre" }, "tip": { "it": "L’indice preme tutte le corde al primo tasto con il lato osseo, non con il polpastrello. Il pollice dietro al manico.", "en": "Press all strings at the first fret with the bony side of your index finger. Thumb behind the neck." } },
+        { "id": "s-c-f", "type": "switch", "chords": ["C", "F"], "beats": 4, "tempo": [45, 75], "title": { "it": "Cambio Do ↔ Fa", "en": "Switch C ↔ F" }, "tip": { "it": "Medio e anulare restano quasi dove sono: è l’indice che si stende.", "en": "Middle and ring fingers barely move: your index finger flattens out." } },
+        { "id": "c-bm", "type": "chord", "chord": "Bm", "title": { "it": "Si minore", "en": "B minor" }, "tip": { "it": "Barré al secondo tasto dalla quinta corda: la forma del La minore spostata.", "en": "Barre at the second fret from the fifth string: the A minor shape moved up." } },
+        { "id": "s-g-bm", "type": "switch", "chords": ["G", "Bm"], "beats": 4, "tempo": [45, 75], "title": { "it": "Cambio Sol ↔ Si minore", "en": "Switch G ↔ B minor" }, "tip": { "it": "Se il barré non suona pulito, inizia dal Si minore settima (senza barré) e torna qui.", "en": "If the barre buzzes, start with Bm7 (no barre) and come back." } },
+        { "id": "p-barre", "type": "progression", "chords": ["D", "Bm", "G", "A"], "beats": 4, "strum": "D-DU-UDU", "tempo": [55, 90], "title": { "it": "Giro con il barré: Re Sim Sol La", "en": "Barre progression: D Bm G A" }, "tip": { "it": "Il barré si fa sentire dopo qualche minuto: fai pause e scuoti la mano.", "en": "The barre gets tiring: take breaks and shake your hand loose." } }
+      ]
+    },
+    {
+      "id": "rhythms",
+      "level": 2,
+      "title": { "it": "Ritmi pop, rock e reggae", "en": "Pop, rock and reggae rhythms" },
+      "desc": { "it": "Sincopi, palm mute e il levare: i ritmi che fanno suonare bene le canzoni.", "en": "Syncopation, palm muting and the offbeat: rhythms that make songs groove." },
+      "lessons": [
+        { "id": "r-sync", "type": "strum", "chords": ["Am", "F"], "pattern": "D-DU-UDU", "tempo": [70, 110], "title": { "it": "La sincope", "en": "Syncopation" }, "tip": { "it": "Il colpo che salta sul terzo battito è il segreto del ritmo pop: senti come spinge.", "en": "The missed stroke on beat three is the secret of pop rhythm: feel the push." } },
+        { "id": "r-mute", "type": "strum", "chords": ["E5", "G5", "A5"], "pattern": "DDDDDDDD", "tempo": [80, 140], "title": { "it": "Rock con il palm mute", "en": "Rock with palm muting" }, "tip": { "it": "Il lato del palmo appoggiato sulle corde vicino al ponte. Solo colpi in giù, corti.", "en": "The side of your palm on the strings by the bridge. Short downstrokes only." } },
+        { "id": "r-reggae", "type": "strum", "chords": ["Am", "D"], "pattern": "-U-U-U-U", "tempo": [70, 100], "title": { "it": "Il levare del reggae", "en": "The reggae offbeat" }, "tip": { "it": "Colpi corti tra un battito e l’altro, poi stoppi le corde allentando la mano sinistra.", "en": "Short strokes between the beats, then mute by easing your fretting hand." } },
+        { "id": "r-chuck", "type": "strum", "chords": ["C", "G"], "pattern": "D-XU-UXU", "tempo": [60, 100], "title": { "it": "Lo chuck (colpo stoppato)", "en": "The chuck (muted strum)" }, "tip": { "it": "X = colpo con il palmo che stoppa le corde: fa da rullante.", "en": "X = strike with the palm muting the strings: it works like a snare drum." } }
+      ]
+    },
+    {
+      "id": "riffs-blues",
+      "level": 2,
+      "title": { "it": "Power chord, riff e blues", "en": "Power chords, riffs and blues" },
+      "desc": { "it": "Il suono del rock e il giro blues di 12 battute.", "en": "The sound of rock and the 12-bar blues." },
+      "lessons": [
+        { "id": "c-e5", "type": "chord", "chord": "E5", "title": { "it": "Il power chord", "en": "The power chord" }, "tip": { "it": "Due note: corda a vuoto e quinta sopra. Spostalo e hai tutti i power chord.", "en": "Two notes: the root and the fifth. Move it around and you have every power chord." } },
+        { "id": "p-power", "type": "progression", "chords": ["E5", "G5", "A5", "C5"], "beats": 4, "strum": "DDDDDDDD", "tempo": [70, 130], "title": { "it": "Riff con i power chord", "en": "Power chord riff" }, "tip": { "it": "La stessa forma che scorre lungo il manico. Stoppa con la mano sinistra tra un accordo e l’altro.", "en": "The same shape sliding along the neck. Mute with your fretting hand between chords." } },
+        { "id": "m-boogie", "type": "riff", "beats": 4, "notes": "5.0+4.2:0.5 5.0+4.2:0.5 5.0+4.4:0.5 5.0+4.2:0.5 5.0+4.2:0.5 5.0+4.2:0.5 5.0+4.4:0.5 5.0+4.2:0.5 4.0+3.2:0.5 4.0+3.2:0.5 4.0+3.4:0.5 4.0+3.2:0.5 5.0+4.2:0.5 5.0+4.2:0.5 5.0+4.4:0.5 5.0+4.2:0.5", "tempo": [70, 120], "title": { "it": "Il boogie blues", "en": "The blues boogie" }, "tip": { "it": "Due corde insieme: la corda a vuoto e l’indice al secondo tasto, l’anulare va al quarto e torna.", "en": "Two strings together: the open string and your index at the second fret, the ring finger reaches the fourth and back." } },
+        { "id": "p-blues", "type": "progression", "chords": ["A7", "A7", "A7", "A7", "D7", "D7", "A7", "A7", "E7", "D7", "A7", "E7"], "beats": 4, "strum": "D-DU-UDU", "tempo": [60, 100], "title": { "it": "Il blues in 12 battute", "en": "The 12-bar blues" }, "tip": { "it": "Quattro di La, due di Re, due di La, poi Mi Re La Mi. È la base di rock’n’roll e blues.", "en": "Four bars of A, two of D, two of A, then E D A E. It’s the backbone of rock’n’roll and blues." } }
+      ]
+    },
+    {
+      "id": "color-chords",
+      "level": 3,
+      "title": { "it": "Accordi con colore", "en": "Colourful chords" },
+      "desc": { "it": "Settime, sus e add9: lo stesso giro, un suono più ricco.", "en": "Sevenths, sus and add9: the same progression, a richer sound." },
+      "lessons": [
+        { "id": "c-cmaj7", "type": "chord", "chord": "Cmaj7", "title": { "it": "Do settima maggiore", "en": "C major 7" }, "tip": { "it": "Il Do con l’indice sollevato: un suono sognante.", "en": "C with your index finger lifted: a dreamy sound." } },
+        { "id": "c-am7", "type": "chord", "chord": "Am7", "title": { "it": "La minore settima", "en": "A minor 7" }, "tip": { "it": "Il La minore senza l’anulare: la terza corda resta libera.", "en": "A minor without your ring finger: the third string rings open." } },
+        { "id": "p-jazz", "type": "progression", "chords": ["Dm7", "G7", "Cmaj7", "Cmaj7"], "beats": 4, "strum": "D-D-D-D-", "tempo": [60, 110], "title": { "it": "Il II-V-I del jazz", "en": "The jazz ii–V–I" }, "tip": { "it": "Il giro più usato nel jazz. Lascia suonare le note: niente fretta.", "en": "The most common progression in jazz. Let the notes ring: no hurry." } },
+        { "id": "p-sus", "type": "progression", "chords": ["Dsus4", "D", "Dsus2", "D", "Asus4", "A", "Cadd9", "G"], "beats": 2, "strum": "D-DU-UDU", "tempo": [60, 100], "title": { "it": "Sus e add9 in movimento", "en": "Sus and add9 in motion" }, "tip": { "it": "Il mignolo e l’indice che si alzano e si posano danno vita all’accordo.", "en": "Lifting and placing your pinky or index brings the chord to life." } }
+      ]
+    },
+    {
+      "id": "fingerstyle",
+      "level": 3,
+      "title": { "it": "Fingerstyle e arpeggi", "en": "Fingerstyle and arpeggios" },
+      "desc": { "it": "Pollice sui bassi, dita sulle corde acute.", "en": "Thumb on the basses, fingers on the high strings." },
+      "lessons": [
+        { "id": "m-arp-am", "type": "riff", "beats": 4, "notes": "5.0:0.5 4.2:0.5 3.2:0.5 2.1:0.5 1.0:0.5 2.1:0.5 3.2:0.5 4.2:0.5 6.0:0.5 4.2:0.5 3.0:0.5 2.0:0.5 1.0:0.5 2.0:0.5 3.0:0.5 4.2:0.5", "tempo": [60, 110], "title": { "it": "Arpeggio su La minore e Mi minore", "en": "Arpeggio over A minor and E minor" }, "tip": { "it": "Tieni premuto tutto l’accordo e suona una corda alla volta: pollice sui bassi, indice, medio e anulare sulle acute.", "en": "Hold the whole chord and pick one string at a time: thumb on the basses, index, middle and ring on the high strings." } },
+        { "id": "m-travis", "type": "riff", "beats": 4, "notes": "5.3+1.0:0.5 3.0:0.5 4.2:0.5 2.1:0.5 5.3:0.5 3.0:0.5 4.2:0.5 2.1:0.5 6.3+1.3:0.5 3.0:0.5 4.0:0.5 2.0:0.5 6.3:0.5 3.0:0.5 4.0:0.5 2.0:0.5", "tempo": [55, 100], "title": { "it": "Il Travis picking (Do e Sol)", "en": "Travis picking (C and G)" }, "tip": { "it": "Il pollice alterna due bassi senza sosta, come un metronomo. Le dita rispondono in mezzo.", "en": "Your thumb alternates two bass notes nonstop, like a metronome. Your fingers answer in between." } },
+        { "id": "m-grace", "type": "riff", "beats": 3, "notes": "4.0 3.0:2 2.0:0.5 3.0:0.5 2.0:2 3.2 3.0:2 4.2 4.0:2 4.0 3.0:2 2.0:0.5 3.0:0.5 2.0:2 3.2 2.3:3", "tempo": [60, 100], "title": { "it": "Melodia in 3/4: Amazing Grace", "en": "A melody in 3/4: Amazing Grace" }, "tip": { "it": "Si conta in tre: UNO due tre. Lascia suonare le note lunghe.", "en": "Count in three: ONE two three. Let the long notes ring." } }
+      ]
+    },
+    {
+      "id": "scales",
+      "level": 3,
+      "title": { "it": "Scale e assoli", "en": "Scales and solos" },
+      "desc": { "it": "La pentatonica e la scala maggiore: le note per improvvisare.", "en": "The pentatonic and major scales: the notes to improvise with." },
+      "lessons": [
+        { "id": "m-penta", "type": "riff", "beats": 4, "notes": "6.5 6.8 5.5 5.7 4.5 4.7 3.5 3.7 2.5 2.8 1.5 1.8 1.5 2.8 2.5 3.7 3.5 4.7 4.5 5.7 5.5 6.8 6.5:2", "tempo": [60, 120], "title": { "it": "La pentatonica minore di La", "en": "The A minor pentatonic" }, "tip": { "it": "Indice al quinto tasto, anulare o mignolo all’ottavo: la scala di quasi tutti gli assoli rock e blues.", "en": "Index on the fifth fret, ring or pinky on the eighth: the scale behind most rock and blues solos." } },
+        { "id": "m-major", "type": "riff", "beats": 4, "notes": "5.3 4.0 4.2 4.3 3.0 3.2 2.0 2.1:2 2.1 2.0 3.2 3.0 4.3 4.2 4.0 5.3:2", "tempo": [60, 120], "title": { "it": "La scala di Do maggiore", "en": "The C major scale" }, "tip": { "it": "Do Re Mi Fa Sol La Si Do, salendo e scendendo.", "en": "C D E F G A B C, up and down." } },
+        { "id": "m-lick", "type": "riff", "beats": 4, "notes": "2.8:0.5 1.5:0.5 2.8:0.5 2.5:0.5 3.7 3.5 4.7:0.5 4.5:0.5 3.7:0.5 4.7:0.5 4.5:2", "tempo": [60, 110], "title": { "it": "Il primo fraseggio blues", "en": "Your first blues lick" }, "tip": { "it": "Note della pentatonica in un piccolo assolo. Prova a piegare la corda all’ottavo tasto.", "en": "Pentatonic notes in a short solo. Try bending the string at the eighth fret." } },
+        { "id": "r-funk", "type": "strum", "chords": ["E7", "A7"], "pattern": "DXDUXUDUDXDUXUDU", "tempo": [60, 100], "title": { "it": "Ritmo funk in sedicesimi", "en": "Funk sixteenths" }, "tip": { "it": "La mano va su e giù quattro volte per battito. Allenta la mano sinistra sulle X.", "en": "Your hand goes down and up four times per beat. Ease off the fretting hand on the X." } }
+      ]
+    }
+  ]
+}

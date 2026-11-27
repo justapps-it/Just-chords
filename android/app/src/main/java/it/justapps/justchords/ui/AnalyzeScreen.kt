@@ -224,7 +224,7 @@ fun AnalyzeScreen(url0: String?, file0: String?) {
                 android.util.Log.w("Analyze", "direct link failed", e)
                 stage = null
                 directFailed = true
-                err = t("analyzeDirectFailed")
+                err = t("analyzeDirectFailed") + "\n(" + (e.message ?: e.javaClass.simpleName).take(160) + ")"
             } finally {
                 f.delete()
             }

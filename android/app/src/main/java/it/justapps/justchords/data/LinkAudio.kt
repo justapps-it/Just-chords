@@ -117,12 +117,18 @@ class LinkAudio(private val userAgent: String = UA) {
         when (kind) {
             LinkKind.YOUTUBE -> youtube(link)
             LinkKind.TIKTOK -> {
-                val (_, html) = page(link)
-                LinkMedia.tiktok(html) ?: throw NotFound("tiktok")
+                val (final, html) = page(link)
+                LinkMedia.tiktok(html) ?: run {
+                    // Short links and app links can land on a page without the data: ask for the plain video page.
+                    val id = LinkMedia.tiktokId(final, html) ?: LinkMedia.tiktokId(link) ?: throw NotFound("TikTok: no video id in $final")
+                    LinkMedia.tiktok(page("https://www.tiktok.com/@_/video/$id").second)
+                } ?: throw NotFound("TikTok: the page has no video data")
             }
             LinkKind.INSTAGRAM -> {
-                val embed = LinkMedia.instagramEmbed(link) ?: throw NotFound("instagram")
-                LinkMedia.instagram(page(embed).second) ?: throw NotFound("instagram")
+                val tries = listOfNotNull(LinkMedia.instagramEmbed(link), LinkMedia.instagramPage(link))
+                if (tries.isEmpty()) throw NotFound("Instagram: not a post link")
+                tries.firstNotNullOfOrNull { u -> runCatching { LinkMedia.instagram(page(u).second) }.getOrNull() }
+                    ?: throw NotFound("Instagram: the post page has no video (private, or Instagram asks to log in)")
             }
             else -> throw NotFound("unsupported")
         }
