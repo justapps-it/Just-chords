@@ -19,11 +19,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +71,7 @@ fun shareRoute(subject: String?, text: String?): String {
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector, val selected: ImageVector, val picture: String? = null)
 
-private val TAB_ROUTES = setOf("home", "find", "tools", "profile")
+private val TAB_ROUTES = setOf("home", "learn", "tools", "profile")
 
 @Composable
 fun JustChordsRoot(startRoute: String?, onRouteConsumed: () -> Unit) {
@@ -82,11 +82,15 @@ fun JustChordsRoot(startRoute: String?, onRouteConsumed: () -> Unit) {
     val picture = app().account.state.collectAsState().value.user?.picture
     val tabs = listOf(
         Tab("home", t("library"), Icons.Outlined.Home, Icons.Rounded.Home),
-        Tab("find", if (settings().lang == "it") "Cerca" else "Search", Icons.Outlined.Search, Icons.Rounded.Search),
+        // Search lives in the library's search field; the dock has Learn.
+        Tab("learn", t("learn"), Icons.Outlined.School, Icons.Rounded.School),
         Tab("tools", t("tools"), Icons.Outlined.Tune, Icons.Rounded.Tune),
         Tab("profile", t("profile"), Icons.Outlined.AccountCircle, Icons.Rounded.AccountCircle, picture),
     )
+    val a = app()
     LaunchedEffect(startRoute) {
+        // First launch: sign in (or later), unless the app was opened to share something.
+        if (startRoute == null && !a.settings.state.value.welcomed && a.account.state.value.user == null) nav.navigate("welcome")
         if (startRoute != null) {
             nav.navigate(startRoute)
             onRouteConsumed()
@@ -149,6 +153,12 @@ private fun Routes(nav: NavHostController) {
             FindScreen(e.arg("q"), e.arg("url"), e.arg("t"), e.arg("a"), e.arg("yt"))
         }
         composable("tools") { ToolsScreen() }
+        composable("learn") { LearnScreen() }
+        composable("course/{id}") { e -> CourseScreen(e.arg("id")!!) }
+        composable("lesson/{id}?song={song}") { e -> LessonRoute(e.arg("id")!!, e.arg("song")) }
+        composable("learnsong/{id}") { e -> SongLearnScreen(e.arg("id")!!) }
+        composable("welcome", enterTransition = { fadeIn() }) { WelcomeScreen() }
+        composable("onboarding", enterTransition = { fadeIn() }) { OnboardingScreen() }
         composable("profile") { ProfileScreen() }
         composable("song/{id}") { e -> SongRoute(e.arg("id")!!, stage = false) }
         composable("stage/song/{id}", enterTransition = { EnterTransition.None }, exitTransition = { ExitTransition.None }) { e -> SongRoute(e.arg("id")!!, stage = true) }

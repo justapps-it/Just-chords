@@ -27,5 +27,7 @@ class ChordsApp : Application() {
         settings = SettingsStore(prefs)
         account = Account(prefs, library, scope)
         account.init()
+        // "Impara" courses (assets/courses.json, the same file as the website).
+        runCatching { it.justapps.justchords.core.Learn.load(assets.open("courses.json").bufferedReader().readText()) }
     }
 }

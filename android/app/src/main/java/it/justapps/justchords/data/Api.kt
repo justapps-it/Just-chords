@@ -195,14 +195,33 @@ class Api(
 
     // -------------------------------------------------------------- account
 
-    data class Login(val token: String, val user: User, val profile: Profile?)
+    data class Login(val token: String, val user: User, val profile: Profile?, val created: Boolean = false)
 
-    suspend fun loginWithGoogle(credential: String): Login {
-        val o = call(
-            "/api/auth/google", "POST",
-            JSONObject().put("credential", credential).put("consent", JSONObject().put("age14", true).put("terms", TERMS_VERSION)),
+    private fun consent() = JSONObject().put("age14", true).put("terms", TERMS_VERSION)
+    private fun login(o: JSONObject) =
+        Login(o.getString("token"), User.fromJson(o.getJSONObject("user"))!!, o.optJSONObject("profile")?.let(Profile::fromJson), o.optBoolean("created"))
+
+    suspend fun loginWithGoogle(credential: String): Login =
+        login(call("/api/auth/google", "POST", JSONObject().put("credential", credential).put("consent", consent())))
+
+    suspend fun register(email: String, password: String, name: String): Login =
+        login(call("/api/auth/register", "POST", JSONObject().put("email", email).put("password", password).put("name", name).put("consent", consent())))
+
+    suspend fun loginWithEmail(email: String, password: String): Login =
+        login(call("/api/auth/login", "POST", JSONObject().put("email", email).put("password", password)))
+
+    /** A Spotify / YouTube / Deezer playlist → artists and genres. */
+    suspend fun playlist(url: String): it.justapps.justchords.core.PlaylistInfo {
+        val o = call("/api/playlist?url=${enc(url)}")
+        val tr = o.optJSONArray("tracks") ?: JSONArray()
+        val ar = o.optJSONArray("artists") ?: JSONArray()
+        val ge = o.optJSONArray("genres") ?: JSONArray()
+        return it.justapps.justchords.core.PlaylistInfo(
+            o.optString("name"), o.optString("source"),
+            (0 until tr.length()).map { tr.getJSONObject(it).let { t -> t.optString("title") to t.optString("artist") } },
+            (0 until ar.length()).map { ar.getJSONObject(it).let { a -> a.optString("name") to a.optInt("n") } },
+            (0 until ge.length()).map { ge.getString(it) },
         )
-        return Login(o.getString("token"), User.fromJson(o.getJSONObject("user"))!!, o.optJSONObject("profile")?.let(Profile::fromJson))
     }
 
     suspend fun me(): Pair<User, Profile?> {

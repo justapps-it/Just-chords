@@ -50,6 +50,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.TextDecrease
 import androidx.compose.material.icons.rounded.TextIncrease
@@ -260,6 +261,7 @@ fun SongScreen(song: Song, stage: Boolean, setlist: StageList?) {
                             if (!song.favorite) a.account.signal(Signal.FAVORITE, song.title, song.artist)
                             a.library.patchSong(song.id, sync = true) { it.copy(favorite = !it.favorite) }
                         }) { Icon(if (song.favorite) Icons.Rounded.Star else Icons.Rounded.StarBorder, t("favorites"), tint = if (song.favorite) JustOrange else LocalContentColorOrDefault()) }
+                        IconButton({ nav.navigate("learnsong/${song.id}") }) { Icon(Icons.Rounded.School, t("learn"), tint = JustOrange) }
                         IconButton({ listen = !listen }) { Icon(Icons.Rounded.SlowMotionVideo, t("listenSong"), tint = if (listen) JustOrange else LocalContentColorOrDefault()) }
                         IconButton({ nav.navigate("stage/song/${song.id}") }) { Icon(Icons.Rounded.Fullscreen, t("stage")) }
                         Box {

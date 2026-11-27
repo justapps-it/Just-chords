@@ -1,5 +1,6 @@
 // Generates the Android app's texts from the web app, so both say the same:
-// src/i18n.ts → ui/I18n.kt, src/components/Legal.tsx → ui/LegalText.kt.
+// src/i18n.ts → ui/I18n.kt, src/components/Legal.tsx → ui/LegalText.kt,
+// src/lib/courses.json → assets/courses.json.
 // Run: node scripts/gen-android-strings.mjs
 import fs from 'fs';
 
@@ -40,4 +41,7 @@ for (const [name, d] of Object.entries(docs)) {
   lo += `    )\n`;
 }
 fs.writeFileSync(`${OUT}/LegalText.kt`, lo + '}\n');
-console.log(Object.keys(it).length, 'strings, legal docs ok');
+// Courses for "Impara": the same JSON, as an asset.
+fs.mkdirSync('android/app/src/main/assets', { recursive: true });
+fs.copyFileSync('src/lib/courses.json', 'android/app/src/main/assets/courses.json');
+console.log(Object.keys(it).length, 'strings, legal docs, courses ok');

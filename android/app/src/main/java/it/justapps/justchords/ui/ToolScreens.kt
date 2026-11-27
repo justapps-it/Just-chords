@@ -121,7 +121,7 @@ private fun midiName(m: Int, n: Notation) = Music.noteName(m % 12, n) + (m / 12 
 
 /** Opens the microphone (asking permission) while the screen is shown. */
 @Composable
-private fun rememberMic(onDenied: () -> Unit): Pair<Mic?, () -> Unit> {
+internal fun rememberMic(onDenied: () -> Unit): Pair<Mic?, () -> Unit> {
     val ctx = LocalContext.current
     var mic by remember { mutableStateOf<Mic?>(null) }
     val open = { mic = runCatching { Mic.open() }.getOrNull().also { if (it == null) onDenied() } }
@@ -134,7 +134,7 @@ private fun rememberMic(onDenied: () -> Unit): Pair<Mic?, () -> Unit> {
 }
 
 @Composable
-private fun MicButton(onClick: () -> Unit) {
+internal fun MicButton(onClick: () -> Unit) {
     val t = rememberT()
     Button(onClick, Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) {
         Icon(Icons.Rounded.Mic, null)
@@ -144,7 +144,7 @@ private fun MicButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun KeepOn() {
+internal fun KeepOn() {
     val v = LocalView.current
     DisposableEffect(Unit) { v.keepScreenOn = true; onDispose { v.keepScreenOn = false } }
 }

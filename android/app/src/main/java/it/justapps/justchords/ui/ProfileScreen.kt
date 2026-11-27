@@ -109,7 +109,8 @@ fun ProfileScreen() {
         busy = true
         scope.launch {
             try {
-                a.account.completeLogin(googleIdToken(ctx))
+                val created = a.account.completeLogin(googleIdToken(ctx))
+                afterLogin(nav, created, a.account.profile.onboarded, home = false)
             } catch (e: GetCredentialCancellationException) {
                 // closed by the user
             } catch (e: CancellationException) {
@@ -183,6 +184,8 @@ fun ProfileScreen() {
                             Text(t("loginGoogle"), fontWeight = FontWeight.SemiBold)
                         }
                         if (!consent) Muted(t("consentNeeded"), Modifier.padding(top = 6.dp), small = true)
+                        Spacer(Modifier.height(12.dp))
+                        EmailLogin(consent) { created -> afterLogin(nav, created, a.account.profile.onboarded, home = false) }
                     }
                     if (err.isNotEmpty()) Text(err, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 }
@@ -269,7 +272,7 @@ private fun SettingRow(label: String, control: @Composable () -> Unit) {
 }
 
 @Composable
-private fun GoogleG() {
+fun GoogleG() {
     androidx.compose.foundation.Image(
         androidx.compose.ui.res.painterResource(R.drawable.ic_google), null, Modifier.size(20.dp),
     )

@@ -16,6 +16,10 @@ data class Profile(
     val genreBoost: Map<String, Double> = emptyMap(),
     val liked: List<String> = emptyList(),
     val disliked: List<String> = emptyList(),
+    /** Learn: lessons done. */
+    val done: List<String> = emptyList(),
+    /** When the first-run questions were answered or skipped (0 = not yet). */
+    val onboarded: Long = 0,
     val updated: Long = 0,
 ) {
     fun toJson(): JSONObject = JSONObject()
@@ -25,6 +29,8 @@ data class Profile(
         .put("genreBoost", JSONObject(genreBoost as Map<*, *>))
         .put("liked", JSONArray(liked))
         .put("disliked", JSONArray(disliked))
+        .put("done", JSONArray(done))
+        .apply { if (onboarded > 0) put("onboarded", onboarded) }
         .put("updated", updated)
 
     companion object {
@@ -32,7 +38,7 @@ data class Profile(
             if (o == null) return Profile()
             fun strs(k: String) = o.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) } } ?: emptyList()
             fun nums(k: String) = o.optJSONObject(k)?.let { m -> m.keys().asSequence().associateWith { m.optDouble(it) }.filterValues { !it.isNaN() } } ?: emptyMap()
-            return Profile(strs("genres"), o.optInt("level", 0), nums("artists"), nums("genreBoost"), strs("liked"), strs("disliked"), o.optLong("updated", 0))
+            return Profile(strs("genres"), o.optInt("level", 0), nums("artists"), nums("genreBoost"), strs("liked"), strs("disliked"), strs("done"), o.optLong("onboarded", 0), o.optLong("updated", 0))
         }
     }
 }
@@ -82,4 +88,18 @@ object Taste {
         val disliked = if (signal == Signal.DISLIKE) (p.disliked + key).distinct().takeLast(300) else p.disliked.filter { signal != Signal.LIKE || it != key }
         return p.copy(artists = artists, genreBoost = boost, liked = liked, disliked = disliked, updated = now)
     }
+}
+
+data class PlaylistInfo(val name: String, val source: String, val tracks: List<Pair<String, String>>, val artists: List<Pair<String, Int>>, val genres: List<String>)
+
+/** A playlist I like → artists and genres in the taste profile (src/lib/recs.ts applyPlaylist). */
+fun Taste.applyPlaylist(p: Profile, pl: PlaylistInfo): Profile {
+    val artists = p.artists.toMutableMap()
+    for ((name, n) in pl.artists.take(30)) {
+        val k = name.trim().lowercase()
+        if (k.isNotEmpty()) artists[k] = minOf(25.0, (artists[k] ?: 0.0) + 2 + minOf(n, 5))
+    }
+    val boost = p.genreBoost.toMutableMap()
+    for (g in pl.genres) boost[g] = minOf(3.0, (boost[g] ?: 0.0) + 1)
+    return p.copy(artists = artists, genreBoost = boost, genres = (p.genres + pl.genres.take(4)).distinct())
 }

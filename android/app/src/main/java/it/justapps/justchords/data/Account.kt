@@ -30,6 +30,8 @@ data class Settings(
     val theme: String = "auto",
     val a4: Int = 440,
     val lefty: Boolean = false,
+    /** The welcome screen (sign in or later) was shown. */
+    val welcomed: Boolean = false,
 )
 
 class SettingsStore(private val prefs: SharedPreferences) {
@@ -46,6 +48,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
             prefs.getString("theme", d.theme) ?: d.theme,
             prefs.getInt("a4", d.a4),
             prefs.getBoolean("lefty", d.lefty),
+            prefs.getBoolean("welcomed", d.welcomed),
         )
     }
 
@@ -53,7 +56,7 @@ class SettingsStore(private val prefs: SharedPreferences) {
         val s = f(_state.value)
         _state.value = s
         prefs.edit().putString("lang", s.lang).putString("notation", s.notation.name).putString("instrument", s.instrument)
-            .putString("tuning", s.tuning).putString("theme", s.theme).putInt("a4", s.a4).putBoolean("lefty", s.lefty).apply()
+            .putString("tuning", s.tuning).putString("theme", s.theme).putInt("a4", s.a4).putBoolean("lefty", s.lefty).putBoolean("welcomed", s.welcomed).apply()
     }
 }
 
@@ -115,8 +118,14 @@ class Account(
         if (e is ApiError && e.status == 401) logout()
     }
 
-    suspend fun completeLogin(credential: String) {
-        val r = api.loginWithGoogle(credential)
+    /** Google sign-in. Returns true for a brand-new account (first-run questions follow). */
+    suspend fun completeLogin(credential: String): Boolean = finishLogin(api.loginWithGoogle(credential))
+
+    suspend fun loginWithEmail(email: String, password: String): Boolean = finishLogin(api.loginWithEmail(email.trim(), password))
+
+    suspend fun register(email: String, password: String, name: String): Boolean = finishLogin(api.register(email.trim(), password, name.trim()))
+
+    private suspend fun finishLogin(r: Api.Login): Boolean {
         token = r.token
         prefs.edit().putString("user", r.user.toJson().toString()).apply()
         // The newer profile wins; a brand-new account takes the local one.
@@ -126,7 +135,16 @@ class Account(
         _state.update { it.copy(user = r.user, profile = p) }
         if (p !== r.profile) runCatching { api.putProfile(p) }
         syncNow()
+        return r.created
     }
+
+    /** Learn: a lesson is done. */
+    fun markDone(id: String) {
+        if (id in profile.done) return
+        setProfile(profile.copy(done = (profile.done + id).takeLast(1000)))
+    }
+
+    fun setOnboarded() = setProfile(profile.copy(onboarded = now()))
 
     fun logout() {
         token = null

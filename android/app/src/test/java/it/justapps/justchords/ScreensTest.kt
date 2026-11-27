@@ -35,7 +35,7 @@ class ScreensTest {
     private fun seed(): String {
         val lib = app.library
         if (lib.state.value.songs.isNotEmpty()) return lib.state.value.songs.first().id
-        app.settings.update { it.copy(lang = "it") }
+        app.settings.update { it.copy(lang = "it", welcomed = true) }
         app.account.setProfile(Profile(genres = listOf("rock", "itpop")))
         lib.saveSong("{title: Albachiara}\n{artist: Vasco Rossi}\n\n[C]Respiri pian[G]o per non far rumore\n[Am]ti addormenti di [F]sera\n")
         lib.saveSong("{title: Let It Be}\n{artist: The Beatles}\n\n[C]When I find my[G]self in times of [Am]trouble\n")
@@ -98,6 +98,20 @@ class ScreensTest {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/how-to-play.png")
+    }
+
+    @Test fun learn() { seed(); shot("learn", "learn") }
+    @Test fun learnDark() { seed(); shot("learn-dark", "learn", "dark") }
+    @Test fun course() { seed(); shot("course", "course/first-chords") }
+    @Test fun lessonSwitch() { seed(); shot("lesson-switch", "lesson/p-pop-song") }
+    @Test fun lessonRiff() { seed(); shot("lesson-riff", "lesson/m-frere") }
+    @Test fun lessonChord() { seed(); shot("lesson-chord", "lesson/c-em") }
+    @Test fun songLearn() { shot("song-learn", "learnsong/${seed()}") }
+    @Test fun onboarding() { seed(); shot("onboarding", "onboarding") }
+    @Test fun welcome() {
+        seed()
+        app.settings.update { it.copy(welcomed = false) }
+        shot("welcome", null)
     }
 
     @Test fun legal() { seed(); shot("privacy", "legal/privacy") }
