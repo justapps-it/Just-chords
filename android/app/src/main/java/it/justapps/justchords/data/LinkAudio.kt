@@ -149,6 +149,19 @@ class LinkAudio(private val userAgent: String = UA) {
         )
     }
 
+    /** A YouTube video to play in the app: a video-only stream (≤ 480p, H.264) plus the sound, or the sound alone. */
+    data class Playable(val audio: String, val video: String?, val title: String?)
+
+    suspend fun youtubePlayable(id: String): Playable = withContext(Dispatchers.IO) {
+        initNewPipe()
+        val info = StreamInfo.getInfo(ServiceList.YouTube, "https://www.youtube.com/watch?v=$id")
+        val audio = pickAudio(info.audioStreams.filter { it.isUrl && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }).firstOrNull() ?: throw NotFound("youtube")
+        val video = (info.videoOnlyStreams + info.videoStreams)
+            .filter { it.isUrl && it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP && it.format == MediaFormat.MPEG_4 && it.height in 1..480 }
+            .maxByOrNull { it.height }
+        Playable(audio.content, video?.content, info.name)
+    }
+
     /** AAC (m4a) first, as every Android decodes it; then by modest bitrate (enough for chords, quick to fetch). */
     private fun pickAudio(s: List<AudioStream>): List<AudioStream> =
         s.sortedWith(

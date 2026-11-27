@@ -324,7 +324,8 @@ fun AnalyzeScreen(url0: String?, file0: String?) {
                     FilledTonalButton({ err = ""; url = Sources.firstLink(input) ?: input.trim() }, enabled = input.isNotBlank()) { Text("OK") }
                 }
             }
-            video?.let { v ->
+            video?.takeIf { it.platform == "youtube" }?.let { v -> item(key = "video") { Column { NativeYouTube(v.id) } } }
+            video?.takeIf { it.platform != "youtube" }?.let { v ->
                 item(key = "video") {
                     Box(
                         Modifier.fillMaxWidth().then(if (v.platform == "youtube") Modifier.aspectRatio(16f / 9f) else Modifier.height(560.dp))

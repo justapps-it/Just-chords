@@ -82,6 +82,9 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // Audio of YouTube links, extracted on the phone (GPL-3.0, like this app).
     implementation("com.github.teamnewpipe:NewPipeExtractor:0.27.1")
+    // Plays YouTube video + audio streams together, with speed control.
+    implementation("androidx.media3:media3-exoplayer:1.8.0")
+    implementation("androidx.media3:media3-ui:1.8.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")

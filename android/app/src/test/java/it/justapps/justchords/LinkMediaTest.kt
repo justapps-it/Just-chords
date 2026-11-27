@@ -85,6 +85,14 @@ class LinkMediaTest {
         assertTrue((m.seconds ?: 0) > 200)
     }
 
+    @Test fun onlineYoutubePlayable() = runBlocking {
+        assumeTrue(online)
+        val m = LinkAudio().youtubePlayable("dQw4w9WgXcQ")
+        println("playable: video=${m.video?.take(70)} audio=${m.audio.take(70)}")
+        assertTrue(m.audio.startsWith("https://"))
+        assertNotNull(m.video)
+    }
+
     @Test fun onlineTiktok() = runBlocking {
         assumeTrue(online)
         val m = LinkAudio().resolve("https://www.tiktok.com/@scout2015/video/6718335390845095173")

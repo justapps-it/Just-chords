@@ -580,72 +580,42 @@ fun SongLearnScreen(songId: String) {
     }
 }
 
-/** The original recording, slowed down first, then at full speed (the YouTube audio, fetched by the phone). */
+/** The original video, slowed down first, then at full speed (played by the app, no embed). */
 @Composable
 private fun PlayAlong(title: String, artist: String, youtube: String?, level: Int) {
     val t = rememberT()
     val a = app()
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     val speeds = remember(level) { Learn.alongSpeeds(level) }
     var speed by remember { mutableIntStateOf(0) }
-    var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    var state by remember { mutableStateOf("idle") }
-    var playing by remember { mutableStateOf(false) }
-    var progress by remember { mutableFloatStateOf(0f) }
-    DisposableEffect(Unit) { onDispose { player?.release() } }
-
-    fun applySpeed(p: MediaPlayer) = runCatching { p.playbackParams = PlaybackParams().setSpeed(speeds[speed]).setPitch(1f) }
-
-    fun load() {
-        state = "loading"
-        scope.launch {
-            try {
-                val id = youtube ?: a.account.api.videos("$title $artist".trim()).firstOrNull()?.id ?: error("no video")
-                val ref = LinkAudio().resolve("https://www.youtube.com/watch?v=$id")
-                val p = MediaPlayer()
-                p.setDataSource(ctx, Uri.parse(ref.url), mapOf("User-Agent" to LinkAudio.UA))
-                p.setOnPreparedListener { mp -> applySpeed(mp); mp.start(); playing = true; state = "ready" }
-                p.setOnErrorListener { _, _, _ -> state = "error"; true }
-                p.setOnCompletionListener { playing = false; if (speed < speeds.lastIndex) speed++ }
-                p.prepareAsync()
-                player = p
-            } catch (e: Exception) {
-                state = "error"
-            }
-        }
-    }
-    LaunchedEffect(player, playing) {
-        while (playing && isActive) {
-            player?.let { p -> runCatching { progress = p.currentPosition.toFloat() / maxOf(1, p.duration) } }
-            delay(250)
-        }
-    }
+    var id by remember { mutableStateOf(youtube) }
+    var started by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     JustCard(Modifier.fillMaxWidth()) {
         Text(t("playAlong"), style = MaterialTheme.typography.titleLarge)
         Muted(t("playAlongHint"), small = true)
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(t("speed"), color = just.muted, fontSize = 13.sp)
-            Spacer(Modifier.width(8.dp))
-            speeds.forEachIndexed { i, s ->
-                FilterChip(i == speed, { speed = i; player?.let(::applySpeed) }, { Text(if (s == 1f) "1×" else "${s}×".replace(".0×", "×")) }, Modifier.padding(end = 6.dp), colors = chipColors())
-            }
-        }
-        if (state == "ready") LinearProgressIndicator({ progress }, Modifier.fillMaxWidth().padding(vertical = 8.dp), color = JustOrange, trackColor = just.line)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (state) {
-                "idle", "error" -> Button(::load, colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(t("learnStart")) }
-                "loading" -> Text(t("loadingAudio"), color = just.muted)
-                else -> {
-                    Button({ player?.let { if (it.isPlaying) { it.pause(); playing = false } else { applySpeed(it); it.start(); playing = true } } }, colors = ButtonDefaults.buttonColors(containerColor = JustOrange)) {
-                        Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(if (playing) t("learnPause") else t("learnStart"))
-                    }
-                    if (speed < speeds.lastIndex) OutlinedButton({ speed++; player?.let(::applySpeed) }) { Icon(Icons.Rounded.Speed, null); Spacer(Modifier.width(6.dp)); Text(t("learnFaster")) }
-                    OutlinedButton({ player?.seekTo(0) }) { Icon(Icons.Rounded.Refresh, null) }
+        val v = id
+        if (started && v != null) {
+            NativeYouTube(v, speeds, initialSpeed = 0, speedIndex = speed, onEnded = { mp ->
+                // At the end: again, a bit faster.
+                if (speed < speeds.lastIndex) {
+                    speed++
+                    mp.seekTo(0)
+                    mp.play()
                 }
-            }
+            })
+        } else {
+            Button(
+                {
+                    scope.launch {
+                        if (id == null) id = runCatching { a.account.api.videos("$title $artist".trim()).firstOrNull()?.id }.getOrNull()
+                        if (id == null) failed = true else started = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = JustOrange),
+            ) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text(t("learnStart")) }
+            if (failed) Text(t("noVideo"), color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         }
-        if (state == "error") Text(t("noVideo"), color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
     }
 }
